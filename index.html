@@ -954,6 +954,10 @@
       <div class="chart-title">Scan a Business</div>
       <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Enter client details and website. The AI will scan their site, find social media, search Reddit, and build a full business intel report.</p>
       <div class="scan-form-grid">
+        <div class="scan-field-group" style="grid-column:1/-1">
+          <label class="scan-label">Business Name</label>
+          <input type="text" class="scan-input" id="scanBusinessName" placeholder="e.g. Acme Dental Practice" autocomplete="off">
+        </div>
         <div class="scan-field-group">
           <label class="scan-label">First Name</label>
           <input type="text" class="scan-input" id="scanFirstName" placeholder="First name" autocomplete="off">
@@ -1777,6 +1781,7 @@
     document.addEventListener("rescan", function () { runScan(); });
 
     async function runScan() {
+      var clientBusinessName = (document.getElementById("scanBusinessName") || {}).value || "";
       var clientFirstName = (document.getElementById("scanFirstName") || {}).value || "";
       var clientLastName = (document.getElementById("scanLastName") || {}).value || "";
       var clientName = (clientFirstName + " " + clientLastName).trim();
@@ -1786,17 +1791,18 @@
       var clientPainPoints = (document.getElementById("scanPainPoints") || {}).value || "";
 
       var url = scanInput.value.trim();
-      if (!url) {
+      if (!url && !clientBusinessName) {
+        var bizInput = document.getElementById("scanBusinessName");
+        if (bizInput) bizInput.style.borderColor = "#ef4444";
         scanInput.style.borderColor = "#ef4444";
-        scanInput.setAttribute("placeholder", "Website URL is required to scan");
-        scanInput.focus();
+        (bizInput || scanInput).focus();
         setTimeout(function () {
+          if (bizInput) bizInput.style.borderColor = "";
           scanInput.style.borderColor = "";
-          scanInput.setAttribute("placeholder", "https://example.com");
         }, 2500);
         return;
       }
-      if (!url.startsWith("http")) url = "https://" + url;
+      if (url && !url.startsWith("http")) url = "https://" + url;
 
       scanBtn.disabled = true;
       scanStatus.style.display = "block";
@@ -1819,16 +1825,21 @@
       }
 
       var domain = "";
-      try { domain = new URL(url).hostname.replace("www.", ""); } catch(e) { domain = url; }
-
-      // Step 1: Fetch website via CORS proxy
-      scanStatusText.textContent = "Fetching website...";
       var siteHtml = "";
-      try {
-        var proxyRes = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
-        var proxyData = await proxyRes.json();
-        siteHtml = proxyData.contents || "";
-      } catch(e) { siteHtml = ""; }
+
+      if (url) {
+        try { domain = new URL(url).hostname.replace("www.", ""); } catch(e) { domain = url; }
+        // Step 1: Fetch website via CORS proxy
+        scanStatusText.textContent = "Fetching website...";
+        try {
+          var proxyRes = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
+          var proxyData = await proxyRes.json();
+          siteHtml = proxyData.contents || "";
+        } catch(e) { siteHtml = ""; }
+      } else {
+        domain = clientBusinessName;
+        scanStatusText.textContent = "Searching for business...";
+      }
 
       // Step 2: Search Reddit
       scanStatusText.textContent = "Searching Reddit...";
@@ -1877,8 +1888,9 @@
       // Step 4: AI deep analysis via Groq
       scanStatusText.textContent = "Running AI deep analysis...";
 
-      var aiPrompt = "Analyze this business website and provide a comprehensive intelligence report. Provide CURRENT, UP-TO-DATE data only. Today's date is " + new Date().toISOString().split("T")[0] + ".\n\n" +
-        "WEBSITE URL: " + url + "\nDOMAIN: " + domain + "\n\n" +
+      var aiPrompt = "Analyze this business and provide a comprehensive intelligence report. Provide CURRENT, UP-TO-DATE data only. Today's date is " + new Date().toISOString().split("T")[0] + ".\n\n" +
+        (clientBusinessName ? "BUSINESS NAME: " + clientBusinessName + "\n" : "") +
+        (url ? "WEBSITE URL: " + url + "\nDOMAIN: " + domain + "\n" : "") + "\n" +
         (clientName ? "CLIENT CONTACT: " + clientName + "\n" : "") +
         (clientEmail ? "CLIENT EMAIL: " + clientEmail + "\n" : "") +
         (clientPhone ? "CLIENT PHONE: " + clientPhone + "\n" : "") +
@@ -1958,6 +1970,8 @@
         analysis.scannedUrl = url;
         analysis.scanDate = new Date().toISOString().split("T")[0];
         analysis.scanTimestamp = Date.now();
+        analysis.clientBusinessName = clientBusinessName;
+        if (clientBusinessName && !analysis.businessName) analysis.businessName = clientBusinessName;
         analysis.clientFirstName = clientFirstName;
         analysis.clientLastName = clientLastName;
         analysis.clientName = clientName;
@@ -2254,6 +2268,7 @@
     var summary = {
       action: "save",
       scanDate: d.scanDate || new Date().toISOString().split("T")[0],
+      clientBusinessName: d.clientBusinessName || "",
       clientFirstName: d.clientFirstName || "",
       clientLastName: d.clientLastName || "",
       clientName: d.clientName || "",
@@ -2752,6 +2767,7 @@
       lastScanData = null;
       document.getElementById("scanResults").innerHTML = "";
       document.getElementById("scanResults").classList.remove("visible");
+      if (document.getElementById("scanBusinessName")) document.getElementById("scanBusinessName").value = "";
       if (document.getElementById("scanFirstName")) document.getElementById("scanFirstName").value = "";
       if (document.getElementById("scanLastName")) document.getElementById("scanLastName").value = "";
       if (document.getElementById("scanEmail")) document.getElementById("scanEmail").value = "";
