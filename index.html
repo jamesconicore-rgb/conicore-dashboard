@@ -1906,7 +1906,64 @@
       var emails = siteHtml.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || [];
       emails = emails.filter(function(e) { return e.indexOf("@example") === -1 && e.indexOf("@sentry") === -1 && e.indexOf("@wix") === -1; });
 
-      // Step 4: AI deep analysis via Groq
+      // Step 4: Internet search for additional data
+      scanStatusText.textContent = "Searching internet for reviews and competitors...";
+      var googleSearchApiKey = KEYS.googleSearchApiKey || CONFIG.googleSearchApiKey || "";
+      var googleSearchEngineId = KEYS.googleSearchEngineId || CONFIG.googleSearchEngineId || "";
+      var internetData = {
+        reviewsSnippet: "",
+        trustpilotSnippet: "",
+        companiesHouseSnippet: "",
+        competitorSnippets: []
+      };
+
+      if (googleSearchApiKey && googleSearchEngineId && googleSearchApiKey !== "YOUR_GOOGLE_API_KEY") {
+        try {
+          // Search 1: Reviews
+          var reviewQuery = encodeURIComponent((clientBusinessName || domain) + " " + (clientLocation || "") + " reviews google");
+          var reviewSearch = await fetch("https://www.googleapis.com/customsearch/v1?key=" + googleSearchApiKey + "&cx=" + googleSearchEngineId + "&q=" + reviewQuery + "&num=3");
+          if (reviewSearch.ok) {
+            var reviewJson = await reviewSearch.json();
+            internetData.reviewsSnippet = (reviewJson.items || []).map(function(item) {
+              return item.title + ": " + item.snippet;
+            }).join("\n");
+          }
+
+          // Search 2: Trustpilot
+          var trustQuery = encodeURIComponent((clientBusinessName || domain) + " trustpilot");
+          var trustSearch = await fetch("https://www.googleapis.com/customsearch/v1?key=" + googleSearchApiKey + "&cx=" + googleSearchEngineId + "&q=" + trustQuery + "&num=2");
+          if (trustSearch.ok) {
+            var trustJson = await trustSearch.json();
+            internetData.trustpilotSnippet = (trustJson.items || []).map(function(item) {
+              return item.snippet;
+            }).join(" ");
+          }
+
+          // Search 3: Companies House
+          var chQuery = encodeURIComponent((clientBusinessName || domain) + " companies house uk");
+          var chSearch = await fetch("https://www.googleapis.com/customsearch/v1?key=" + googleSearchApiKey + "&cx=" + googleSearchEngineId + "&q=" + chQuery + "&num=2");
+          if (chSearch.ok) {
+            var chJson = await chSearch.json();
+            internetData.companiesHouseSnippet = (chJson.items || []).map(function(item) {
+              return item.snippet;
+            }).join(" ");
+          }
+
+          // Search 4: Competitors
+          var compQuery = encodeURIComponent((clientBusinessName || domain) + " competitors " + (clientLocation || ""));
+          var compSearch = await fetch("https://www.googleapis.com/customsearch/v1?key=" + googleSearchApiKey + "&cx=" + googleSearchEngineId + "&q=" + compQuery + "&num=10");
+          if (compSearch.ok) {
+            var compJson = await compSearch.json();
+            internetData.competitorSnippets = (compJson.items || []).slice(0, 10).map(function(item) {
+              return item.title + " - " + item.link + ": " + item.snippet;
+            });
+          }
+        } catch(e) {
+          console.log("Google Search error:", e);
+        }
+      }
+
+      // Step 5: AI deep analysis via Groq
       scanStatusText.textContent = "Running AI deep analysis...";
 
       var aiPrompt = "You are a business intelligence analyst. Analyze a REAL business and produce a factual report. Today is " + new Date().toISOString().split("T")[0] + ".\n\n" +
@@ -1919,20 +1976,27 @@
         (clientEmail ? "Client Email: " + clientEmail + "\n" : "") +
         (clientPhone ? "Client Phone: " + clientPhone + "\n" : "") +
         (clientPainPoints ? "PAIN POINTS / NOTES:\n" + clientPainPoints + "\n" : "") +
-        "\n=== SCRAPED DATA ===\n" +
+        "\n=== SCRAPED DATA (from their website) ===\n" +
         "Website text (first 8000 chars):\n" + textContent + "\n\n" +
         "Social links found on site: " + JSON.stringify(foundSocial) + "\n" +
         "Phones found: " + phones.slice(0,3).join(", ") + "\n" +
         "Emails found: " + emails.slice(0,3).join(", ") + "\n" +
         "Reddit mentions (" + redditData.length + "):\n" +
         redditData.slice(0,5).map(function(r) { return '- "' + r.title + '" (r/' + r.subreddit + ', score: ' + r.score + ')'; }).join("\n") + "\n\n" +
+        "=== INTERNET SEARCH RESULTS ===\n" +
+        (internetData.reviewsSnippet ? "Google search for reviews:\n" + internetData.reviewsSnippet + "\n\n" : "No review data found via search.\n\n") +
+        (internetData.trustpilotSnippet ? "Trustpilot search results:\n" + internetData.trustpilotSnippet + "\n\n" : "No Trustpilot found.\n\n") +
+        (internetData.companiesHouseSnippet ? "Companies House search:\n" + internetData.companiesHouseSnippet + "\n\n" : "No Companies House data found.\n\n") +
+        (internetData.competitorSnippets.length ? "Competitor search results:\n" + internetData.competitorSnippets.join("\n") + "\n\n" : "No competitor data found via search.\n\n") +
         "=== CRITICAL INSTRUCTIONS ===\n" +
-        "1. Use the BUSINESS NAME and LOCATION to identify the EXACT real business. Cross-reference with Google, review sites, and Companies House UK.\n" +
-        "2. ONLY USE FACTUAL DATA. If you cannot find specific information, use 'Unknown' or 'Not available' - DO NOT guess or estimate.\n" +
-        "3. For reviews and ratings: Use ONLY what you can verify from the scraped website content. If not mentioned on their site, use 'Not available'.\n" +
-        "4. For social media: ONLY use the links found in 'Social links found on site' above. Do NOT guess social media handles.\n" +
-        "5. COMPETITORS: List MINIMUM 5, up to 10 REAL LOCAL competitors within 5-10 miles of this business. They must be real businesses in the same industry and area. Do NOT invent businesses.\n" +
-        "6. For recommendedWorkflows: Design 3-5 specific n8n automation workflows tailored to this business's pain points and gaps. These should be practical automations an AI consultancy would implement.\n\n" +
+        "1. Use the BUSINESS NAME and LOCATION to identify the EXACT real business.\n" +
+        "2. Use data from BOTH sources: website scrape AND internet search results above.\n" +
+        "3. For reviews/ratings: Extract from 'INTERNET SEARCH RESULTS' section - look for star ratings, review counts in the search snippets.\n" +
+        "4. For Companies House: Extract status from the Companies House search results above.\n" +
+        "5. For social media: ONLY use links found in 'Social links found on site'. Do NOT guess.\n" +
+        "6. COMPETITORS: Use the businesses found in 'Competitor search results' above. Extract business names, websites, and details from those search snippets. MINIMUM 5, up to 10. These are REAL businesses - extract their actual names and websites from the search results.\n" +
+        "7. For recommendedWorkflows: Design 3-5 specific n8n automation workflows tailored to this business's pain points.\n" +
+        "8. If data is NOT available in either website scrape OR internet search results, use 'Not available' or 'Unknown'. Do NOT invent data.\n\n" +
         'Respond ONLY with valid JSON (no markdown, no code fences). Use this exact structure:\n' +
         '{\n' +
         '  "businessName": "exact registered name",\n' +
@@ -1946,14 +2010,14 @@
         '  "pricing": ["real pricing if found"],\n' +
         '  "team": "key people if known",\n' +
         '  "companyReport": {\n' +
-        '    "googleReviews": "ONLY use if explicitly stated on their website, otherwise use \\"Not available\\"",\n' +
-        '    "googleRating": "ONLY use if explicitly stated on their website, otherwise use \\"Not available\\"",\n' +
-        '    "trustpilotRating": "ONLY use if explicitly stated on their website, otherwise use \\"Not available\\"",\n' +
-        '    "yearEstablished": "ONLY use if explicitly stated on their website, otherwise use \\"Unknown\\"",\n' +
-        '    "employeeEstimate": "ONLY use if you can verify from website content, otherwise use \\"Unknown\\"",\n' +
-        '    "turnoverEstimate": "ONLY use if stated on website, otherwise use \\"Unknown\\"",\n' +
-        '    "companiesHouseStatus": "Use \\"Unknown\\" - you cannot verify this",\n' +
-        '    "usp": "Based ONLY on what their website claims"\n' +
+        '    "googleReviews": "Extract from internet search results - look for review count",\n' +
+        '    "googleRating": "Extract from internet search results - look for star rating (e.g. 4.5)",\n' +
+        '    "trustpilotRating": "Extract from Trustpilot search results if found",\n' +
+        '    "yearEstablished": "Extract from website or search results if mentioned",\n' +
+        '    "employeeEstimate": "Extract from website or search if mentioned (e.g. 5-10)",\n' +
+        '    "turnoverEstimate": "Extract from search if mentioned, otherwise Unknown",\n' +
+        '    "companiesHouseStatus": "Extract from Companies House search results (Active/Dormant/Not found)",\n' +
+        '    "usp": "Based on website and search results"\n' +
         '  },\n' +
         '  "socialMedia": {\n    "instagram": "URL or null",\n    "facebook": "URL or null",\n    "twitter": "URL or null",\n    "linkedin": "URL or null",\n    "tiktok": "URL or null",\n    "youtube": "URL or null",\n    "activePlatforms": ["list"]\n  },\n' +
         '  "redditSentiment": "positive/neutral/negative/mixed/none",\n' +
