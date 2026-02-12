@@ -1928,9 +1928,11 @@
         redditData.slice(0,5).map(function(r) { return '- "' + r.title + '" (r/' + r.subreddit + ', score: ' + r.score + ')'; }).join("\n") + "\n\n" +
         "=== CRITICAL INSTRUCTIONS ===\n" +
         "1. Use the BUSINESS NAME and LOCATION to identify the EXACT real business. Cross-reference with Google, review sites, and Companies House UK.\n" +
-        "2. All data must be about THIS SPECIFIC business, not generic or made up.\n" +
-        "3. COMPETITORS: List MINIMUM 5, up to 10 REAL LOCAL competitors within 5-10 miles of this business. They must be real businesses in the same industry and area. Do NOT invent businesses.\n" +
-        "4. For recommendedWorkflows: Design 3-5 specific n8n automation workflows tailored to this business's pain points and gaps. These should be practical automations an AI consultancy would implement.\n\n" +
+        "2. ONLY USE FACTUAL DATA. If you cannot find specific information, use 'Unknown' or 'Not available' - DO NOT guess or estimate.\n" +
+        "3. For reviews and ratings: Use ONLY what you can verify from the scraped website content. If not mentioned on their site, use 'Not available'.\n" +
+        "4. For social media: ONLY use the links found in 'Social links found on site' above. Do NOT guess social media handles.\n" +
+        "5. COMPETITORS: List MINIMUM 5, up to 10 REAL LOCAL competitors within 5-10 miles of this business. They must be real businesses in the same industry and area. Do NOT invent businesses.\n" +
+        "6. For recommendedWorkflows: Design 3-5 specific n8n automation workflows tailored to this business's pain points and gaps. These should be practical automations an AI consultancy would implement.\n\n" +
         'Respond ONLY with valid JSON (no markdown, no code fences). Use this exact structure:\n' +
         '{\n' +
         '  "businessName": "exact registered name",\n' +
@@ -1944,14 +1946,14 @@
         '  "pricing": ["real pricing if found"],\n' +
         '  "team": "key people if known",\n' +
         '  "companyReport": {\n' +
-        '    "googleReviews": "number or estimate e.g. ~120",\n' +
-        '    "googleRating": "X.X",\n' +
-        '    "trustpilotRating": "X.X or N/A",\n' +
-        '    "yearEstablished": "year or estimate",\n' +
-        '    "employeeEstimate": "e.g. 5-10",\n' +
-        '    "turnoverEstimate": "e.g. 100k-500k GBP",\n' +
-        '    "companiesHouseStatus": "Active/Dormant/Not found",\n' +
-        '    "usp": "their unique selling proposition"\n' +
+        '    "googleReviews": "ONLY use if explicitly stated on their website, otherwise use \\"Not available\\"",\n' +
+        '    "googleRating": "ONLY use if explicitly stated on their website, otherwise use \\"Not available\\"",\n' +
+        '    "trustpilotRating": "ONLY use if explicitly stated on their website, otherwise use \\"Not available\\"",\n' +
+        '    "yearEstablished": "ONLY use if explicitly stated on their website, otherwise use \\"Unknown\\"",\n' +
+        '    "employeeEstimate": "ONLY use if you can verify from website content, otherwise use \\"Unknown\\"",\n' +
+        '    "turnoverEstimate": "ONLY use if stated on website, otherwise use \\"Unknown\\"",\n' +
+        '    "companiesHouseStatus": "Use \\"Unknown\\" - you cannot verify this",\n' +
+        '    "usp": "Based ONLY on what their website claims"\n' +
         '  },\n' +
         '  "socialMedia": {\n    "instagram": "URL or null",\n    "facebook": "URL or null",\n    "twitter": "URL or null",\n    "linkedin": "URL or null",\n    "tiktok": "URL or null",\n    "youtube": "URL or null",\n    "activePlatforms": ["list"]\n  },\n' +
         '  "redditSentiment": "positive/neutral/negative/mixed/none",\n' +
@@ -1986,7 +1988,7 @@
           body: JSON.stringify({
             model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: aiPrompt }],
-            temperature: 0.3,
+            temperature: 0.1,
             max_tokens: 6000
           })
         });
@@ -2003,11 +2005,21 @@
         var analysis = JSON.parse(content);
 
         // Merge: prefer actual URLs found on site over AI guesses
-        Object.keys(foundSocial).forEach(function(p) {
-          if (foundSocial[p] && analysis.socialMedia) {
-            analysis.socialMedia[p] = foundSocial[p];
-          }
-        });
+        // Validate social media - only use links that were actually found on the site
+        if (analysis.socialMedia) {
+          Object.keys(analysis.socialMedia).forEach(function(p) {
+            if (p === "activePlatforms") return;
+            // If AI provided a link but we didn't find it on site, remove it
+            if (analysis.socialMedia[p] && !foundSocial[p]) {
+              analysis.socialMedia[p] = null;
+            } else if (foundSocial[p]) {
+              // Use the link we actually found
+              analysis.socialMedia[p] = foundSocial[p];
+            }
+          });
+          // Update activePlatforms to match what we actually have
+          analysis.socialMedia.activePlatforms = Object.keys(foundSocial);
+        }
         if (phones.length && !analysis.phone) analysis.phone = phones[0].replace("tel:", "").trim();
         if (emails.length && !analysis.email) analysis.email = emails[0];
 
@@ -2308,12 +2320,12 @@
       (d.targetAudience ? '<p><span class="label">Target Audience:</span> ' + escapeHtml(d.targetAudience) + '</p>' : '') +
       (d.companyReport ? '<h2>Company Report</h2>' +
         '<table style="width:100%;font-size:12px;border-collapse:collapse;">' +
-        '<tr><td style="padding:4px 0;color:#64748b;">Google Rating</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml(d.companyReport.googleRating || "N/A") + ' (' + escapeHtml(d.companyReport.googleReviews || "?") + ' reviews)</td></tr>' +
-        '<tr><td style="padding:4px 0;color:#64748b;">Trustpilot</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml(d.companyReport.trustpilotRating || "N/A") + '</td></tr>' +
-        '<tr><td style="padding:4px 0;color:#64748b;">Established</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml(d.companyReport.yearEstablished || "N/A") + '</td></tr>' +
-        '<tr><td style="padding:4px 0;color:#64748b;">Employees</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml(d.companyReport.employeeEstimate || "N/A") + '</td></tr>' +
-        '<tr><td style="padding:4px 0;color:#64748b;">Est. Turnover</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml(d.companyReport.turnoverEstimate || "N/A") + '</td></tr>' +
-        '<tr><td style="padding:4px 0;color:#64748b;">Companies House</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml(d.companyReport.companiesHouseStatus || "N/A") + '</td></tr>' +
+        '<tr><td style="padding:4px 0;color:#64748b;">Google Rating</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml((d.companyReport.googleRating && d.companyReport.googleRating !== "Not available") ? d.companyReport.googleRating : "N/A") + (d.companyReport.googleReviews && d.companyReport.googleReviews !== "Not available" ? ' (' + escapeHtml(d.companyReport.googleReviews) + ' reviews)' : '') + '</td></tr>' +
+        '<tr><td style="padding:4px 0;color:#64748b;">Trustpilot</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml((d.companyReport.trustpilotRating && d.companyReport.trustpilotRating !== "Not available") ? d.companyReport.trustpilotRating : "N/A") + '</td></tr>' +
+        '<tr><td style="padding:4px 0;color:#64748b;">Established</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml((d.companyReport.yearEstablished && d.companyReport.yearEstablished !== "Unknown") ? d.companyReport.yearEstablished : "N/A") + '</td></tr>' +
+        '<tr><td style="padding:4px 0;color:#64748b;">Employees</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml((d.companyReport.employeeEstimate && d.companyReport.employeeEstimate !== "Unknown") ? d.companyReport.employeeEstimate : "N/A") + '</td></tr>' +
+        '<tr><td style="padding:4px 0;color:#64748b;">Est. Turnover</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml((d.companyReport.turnoverEstimate && d.companyReport.turnoverEstimate !== "Unknown") ? d.companyReport.turnoverEstimate : "N/A") + '</td></tr>' +
+        '<tr><td style="padding:4px 0;color:#64748b;">Companies House</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml((d.companyReport.companiesHouseStatus && d.companyReport.companiesHouseStatus !== "Unknown") ? d.companyReport.companiesHouseStatus : "N/A") + '</td></tr>' +
         (d.companyReport.usp ? '<tr><td style="padding:4px 0;color:#64748b;">USP</td><td style="padding:4px 0;font-weight:600;">' + escapeHtml(d.companyReport.usp) + '</td></tr>' : '') +
         '</table>' : '') +
       '<h2>Services</h2><ul>' + (d.services || []).map(function(s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ul>' +
