@@ -1,0 +1,2796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Centre</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #0f172a;
+      --primary-light: #1e293b;
+      --accent: #3b82f6;
+      --accent-end: #06b6d4;
+      --card-bg: rgba(30,41,59,0.65);
+      --card-border: rgba(255,255,255,0.06);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --hot: #ef4444;
+      --warm: #f97316;
+      --cool: #3b82f6;
+      --radius: 16px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, #334155 100%);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-logo {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      object-fit: contain;
+      display: none;
+    }
+    .header-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+    }
+    .header-tagline {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.6px;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 16px;
+    }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--text); }
+    .refresh-btn.spinning svg { animation: spin 0.8s linear; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Mode Toggle ── */
+    .client-dropdown {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+      min-width: 140px;
+      max-width: 200px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+    .client-dropdown:focus { border-color: var(--accent); }
+    .client-dropdown option {
+      background: #1e293b;
+      color: var(--text);
+    }
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .mode-btn {
+      padding: 5px 14px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .mode-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent-end));
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+    }
+    .mode-btn:not(.active):hover { color: var(--text); }
+
+    /* ── Date Filter ── */
+    .date-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .date-bar label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .date-input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .date-input:focus { border-color: var(--accent); }
+    .date-input::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+    .date-preset {
+      padding: 5px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--card-border);
+      background: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .date-preset:hover { border-color: var(--accent); color: var(--text); }
+    .date-preset.active {
+      background: rgba(59,130,246,0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .date-sep { color: var(--text-muted); font-size: 12px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(59,130,246,0.12);
+    }
+    .card-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .card-value {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .card-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* ── KPI Grid ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kpi-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      color: var(--accent);
+    }
+
+    /* ── Chart Grid ── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .chart-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: -0.2px;
+    }
+    .chart-wrap { position: relative; height: 200px; }
+    .chart-grid > .card { min-height: 0; }
+
+    /* ── Funnel ── */
+    .funnel { margin-bottom: 24px; }
+    .funnel-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+    .funnel-label {
+      width: 70px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .funnel-track {
+      flex: 1;
+      height: 28px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .funnel-bar {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+      width: 0;
+    }
+    .funnel-value {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    /* ── Activity Feed ── */
+    .activity-feed {
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+    .activity-feed::-webkit-scrollbar { width: 4px; }
+    .activity-feed::-webkit-scrollbar-track { background: transparent; }
+    .activity-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    .activity-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .activity-icon.email { background: rgba(59,130,246,0.15); }
+    .activity-icon.phone { background: rgba(34,197,94,0.15); }
+    .activity-icon.social { background: rgba(168,85,247,0.15); }
+    .activity-icon.booking { background: rgba(245,158,11,0.15); }
+    .activity-text {
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.45;
+    }
+    .activity-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .quick-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .quick-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .quick-link:hover { border-color: var(--accent); color: var(--text); background: rgba(59,130,246,0.08); }
+    .powered-by {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .powered-by a { color: var(--accent); text-decoration: none; }
+    .powered-by a:hover { text-decoration: underline; }
+
+    /* ── Tooltips ── */
+    [data-tip] {
+      position: relative;
+      cursor: help;
+    }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%) translateY(6px);
+      background: #1e293b;
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      white-space: normal;
+      width: max-content;
+      max-width: 260px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 9999;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      text-align: left;
+      letter-spacing: normal;
+      text-transform: none;
+    }
+    [data-tip]::before {
+      content: "";
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #1e293b;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 10000;
+    }
+    [data-tip]:hover::after,
+    [data-tip]:hover::before {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    [data-tip]:hover::before {
+      transform: translateX(-50%);
+    }
+    /* Tip pointing down (for elements near top of page) */
+    [data-tip-pos="below"]::after {
+      bottom: auto;
+      top: calc(100% + 10px);
+      transform: translateX(-50%) translateY(-6px);
+    }
+    [data-tip-pos="below"]::before {
+      bottom: auto;
+      top: calc(100% + 4px);
+      border-top-color: transparent;
+      border-bottom-color: #1e293b;
+    }
+    [data-tip-pos="below"]:hover::after {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Help Button ── */
+    .help-btn {
+      background: none;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+    }
+    .help-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Help Overlay ── */
+    .help-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+    .help-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .help-modal {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 32px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+    .help-overlay.open .help-modal {
+      transform: translateY(0);
+    }
+    .help-modal::-webkit-scrollbar { width: 4px; }
+    .help-modal::-webkit-scrollbar-track { background: transparent; }
+    .help-modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    .help-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .help-header h2 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .help-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+    .help-close:hover { color: var(--text); }
+    .help-section {
+      margin-bottom: 24px;
+    }
+    .help-section h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .help-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      align-items: flex-start;
+    }
+    .help-item:last-child { border-bottom: none; }
+    .help-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: rgba(59,130,246,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .help-item-text h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    .help-item-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .help-tip {
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.15);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+    .help-tip strong { color: var(--text); }
+
+    /* ── Setup / Scanner ── */
+    .setup-panel { display: none; }
+    .setup-panel.visible { display: block; }
+    .dashboard-content { }
+    .dashboard-content.hidden { display: none; }
+    .scan-form {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      align-items: stretch;
+    }
+    .scan-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .scan-field-group { display: flex; flex-direction: column; gap: 4px; }
+    .scan-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+    .scan-input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .scan-textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+    .scan-input:focus { border-color: var(--accent); }
+    .scan-input::placeholder { color: var(--text-muted); }
+    .scan-btn {
+      padding: 14px 28px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-end));
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+      white-space: nowrap;
+    }
+    .scan-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .scan-status {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .scan-status .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    .scan-results { display: none; }
+    .scan-results.visible { display: block; }
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .result-header h2 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+    .result-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .result-badge.small { background: rgba(59,130,246,0.15); color: var(--accent); }
+    .result-badge.medium { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .result-badge.large { background: rgba(34,197,94,0.15); color: var(--success); }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .result-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      backdrop-filter: blur(12px);
+    }
+    .result-card.full { grid-column: 1 / -1; }
+    .result-card h3 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .result-card p, .result-card li {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .result-card ul {
+      list-style: none;
+      padding: 0;
+    }
+    .result-card li {
+      padding: 4px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+    .result-card li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 11px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .result-card .value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .result-card a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .result-card a:hover { text-decoration: underline; }
+    .social-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .social-tag {
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .social-tag.active { background: rgba(34,197,94,0.12); color: var(--success); }
+    .social-tag.inactive { background: rgba(255,255,255,0.04); color: var(--text-muted); text-decoration: line-through; }
+    .source-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .source-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.15);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .source-link:hover { background: rgba(59,130,246,0.15); }
+    .pitch-box {
+      background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(6,182,212,0.1));
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 12px;
+      padding: 18px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 10px;
+      border: 1px solid rgba(59,130,246,0.3);
+      background: rgba(59,130,246,0.1);
+      color: var(--accent);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .download-btn:hover { background: rgba(59,130,246,0.2); color: #fff; }
+    .download-btn svg { width: 14px; height: 14px; }
+    .save-db-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      border-radius: 10px;
+      border: 1px solid rgba(34,197,94,0.3);
+      background: rgba(34,197,94,0.1);
+      color: var(--success);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .save-db-btn:hover { background: rgba(34,197,94,0.2); color: #fff; }
+    .save-db-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .save-db-btn.saved { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.2); }
+    .competitor-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 12px;
+    }
+    .competitor-table th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      white-space: nowrap;
+    }
+    .competitor-table td {
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: var(--text-muted);
+      vertical-align: top;
+    }
+    .competitor-table tr:last-child td { border-bottom: none; }
+    .competitor-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .competitor-rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px; height: 24px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .competitor-rank.high { background: rgba(239,68,68,0.15); color: var(--hot); }
+    .competitor-rank.medium { background: rgba(249,115,22,0.15); color: var(--warm); }
+    .competitor-rank.low { background: rgba(59,130,246,0.15); color: var(--cool); }
+    .threat-badge {
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .threat-badge.high { background: rgba(239,68,68,0.12); color: var(--hot); }
+    .threat-badge.medium { background: rgba(249,115,22,0.12); color: var(--warm); }
+    .threat-badge.low { background: rgba(59,130,246,0.12); color: var(--cool); }
+    .competitor-name { font-weight: 600; color: var(--text); }
+    .competitor-name a { color: var(--accent); text-decoration: none; font-size: 11px; }
+    .competitor-name a:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      .competitor-table { font-size: 11px; }
+      .competitor-table th, .competitor-table td { padding: 6px; }
+    }
+    @media (max-width: 768px) {
+      .result-grid { grid-template-columns: 1fr; }
+      .scan-form { flex-direction: column; }
+      .scan-form-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Loading ── */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-value { height: 36px; width: 60px; margin-bottom: 6px; }
+    .skeleton-chart { height: 200px; width: 100%; }
+
+    /* ── Error ── */
+    .error-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .error-state h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .error-state p {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.7;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    /* ── Fade-in animation ── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeUp 0.6s ease forwards;
+    }
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .container { padding: 16px 14px 32px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-grid { grid-template-columns: 1fr; }
+      .header-title { font-size: 18px; }
+      .card-value { font-size: 28px; }
+      .card { padding: 18px; }
+    }
+    @media (max-width: 480px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header class="header fade-up">
+    <div class="header-left">
+      <img class="header-logo" id="headerLogo" src="" alt="">
+      <div>
+        <div class="header-title" id="headerTitle">Command Centre</div>
+        <div class="header-tagline" id="headerTagline"></div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="client-selector" data-tip="Switch between saved clients" data-tip-pos="below">
+        <select id="clientDropdown" class="client-dropdown">
+          <option value="">-- Select Client --</option>
+          <option value="__new__">+ New Client</option>
+        </select>
+      </div>
+      <div class="mode-toggle" data-tip="DEMO = sample data. LIVE = real data. SCAN = scan any business website for intel." data-tip-pos="below">
+        <button class="mode-btn active" id="btnDemo">DEMO</button>
+        <button class="mode-btn" id="btnLive">LIVE</button>
+        <button class="mode-btn" id="btnSetup">SCAN</button>
+      </div>
+      <div class="live-badge">
+        <span class="live-dot"></span>
+        <span id="lastUpdated">Loading...</span>
+        <a href="#" id="disconnectLink" style="display:none;font-size:11px;color:var(--text-muted);text-decoration:underline;margin-left:4px;" title="Disconnect client data">disconnect</a>
+      </div>
+      <button class="help-btn" id="helpBtn" title="Help" data-tip="Open the quick-start guide" data-tip-pos="below">?</button>
+      <button class="refresh-btn" id="refreshBtn" title="Refresh now" data-tip="Refresh data now" data-tip-pos="below">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M1.5 8a6.5 6.5 0 0 1 11.48-4.17M14.5 8a6.5 6.5 0 0 1-11.48 4.17"/>
+          <polyline points="1.5 3 1.5 7 5.5 7"/><polyline points="14.5 13 14.5 9 10.5 9"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Setup Panel (hidden by default) -->
+  <div class="setup-panel" id="setupPanel">
+    <div class="card fade-up" style="margin-bottom:24px">
+      <div class="chart-title">Scan a Business</div>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">Enter client details and website. The AI will scan their site, find social media, search Reddit, and build a full business intel report.</p>
+      <div class="scan-form-grid">
+        <div class="scan-field-group">
+          <label class="scan-label">Full Name</label>
+          <input type="text" class="scan-input" id="scanName" placeholder="First & Last name" autocomplete="off">
+        </div>
+        <div class="scan-field-group">
+          <label class="scan-label">Email</label>
+          <input type="email" class="scan-input" id="scanEmail" placeholder="client@example.com" autocomplete="off">
+        </div>
+        <div class="scan-field-group">
+          <label class="scan-label">Telephone</label>
+          <input type="tel" class="scan-input" id="scanPhone" placeholder="+44 7xxx xxx xxx" autocomplete="off">
+        </div>
+        <div class="scan-field-group">
+          <label class="scan-label">Website</label>
+          <input type="url" class="scan-input" id="scanUrl" placeholder="https://example.com" autocomplete="off">
+        </div>
+        <div class="scan-field-group" style="grid-column:1/-1">
+          <label class="scan-label">Business Location</label>
+          <input type="text" class="scan-input" id="scanLocation" placeholder="City, region or full address" autocomplete="off">
+        </div>
+        <div class="scan-field-group" style="grid-column:1/-1">
+          <label class="scan-label">Pain Points / Notes</label>
+          <textarea class="scan-input scan-textarea" id="scanPainPoints" rows="3" placeholder="Any specific challenges, bottlenecks, or goals this business faces..."></textarea>
+        </div>
+      </div>
+      <div style="margin-top:14px;text-align:right;">
+        <button class="scan-btn" id="scanBtn">Scan</button>
+      </div>
+      <div class="scan-status" id="scanStatus" style="display:none;">
+        <div class="spinner"></div>
+        <div id="scanStatusText">Scanning website...</div>
+      </div>
+    </div>
+    <div class="scan-results" id="scanResults"></div>
+  </div>
+
+  <!-- Dashboard Content (hidden in setup mode) -->
+  <div class="dashboard-content" id="dashboardContent">
+
+  <!-- Connect Panel (shown when no Sheet ID) -->
+  <div class="connect-panel" id="connectPanel" style="display:none;">
+    <div class="card fade-up" style="max-width:480px;margin:60px auto;text-align:center;">
+      <div style="margin-bottom:20px;">
+        <svg width="40" height="40" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="14" height="10" rx="2"/><path d="M1 7h14"/><circle cx="4" cy="5" r="0.5" fill="var(--accent)"/><circle cx="6.5" cy="5" r="0.5" fill="var(--accent)"/><circle cx="9" cy="5" r="0.5" fill="var(--accent)"/></svg>
+      </div>
+      <div class="chart-title" style="margin-bottom:4px;">Connect Client Data</div>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Enter a Google Sheet ID and client contact details to load live data into the dashboard.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;text-align:left;">
+        <div class="scan-field-group">
+          <label class="scan-label">Google Sheet ID</label>
+          <input type="text" class="scan-input" id="connectSheetId" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" autocomplete="off">
+        </div>
+        <div class="scan-field-group">
+          <label class="scan-label">Client Email</label>
+          <input type="email" class="scan-input" id="connectEmail" placeholder="client@example.com" autocomplete="off">
+        </div>
+        <div class="scan-field-group">
+          <label class="scan-label">Client Phone</label>
+          <input type="tel" class="scan-input" id="connectPhone" placeholder="+44 7xxx xxx xxx" autocomplete="off">
+        </div>
+        <button class="scan-btn" id="connectBtn" style="width:100%;margin-top:4px;">Connect</button>
+      </div>
+      <p style="color:var(--text-muted);font-size:11px;margin-top:14px;line-height:1.5;">Find the Sheet ID in the Google Sheets URL between <code style="color:var(--accent);background:rgba(59,130,246,0.1);padding:2px 6px;border-radius:4px;">/d/</code> and <code style="color:var(--accent);background:rgba(59,130,246,0.1);padding:2px 6px;border-radius:4px;">/edit</code></p>
+    </div>
+  </div>
+
+  <!-- Date Filter -->
+  <div class="date-bar fade-up" style="animation-delay:0.03s">
+    <label>Period</label>
+    <button class="date-preset active" data-range="today" data-tip="Show only today's leads and activity" data-tip-pos="below">Today</button>
+    <button class="date-preset" data-range="7d" data-tip="Show the last 7 days of data" data-tip-pos="below">7 Days</button>
+    <button class="date-preset" data-range="30d" data-tip="Show the last 30 days of data" data-tip-pos="below">30 Days</button>
+    <button class="date-preset" data-range="all" data-tip="Show all data since the beginning" data-tip-pos="below">All Time</button>
+    <span class="date-sep">or</span>
+    <input type="date" class="date-input" id="dateFrom" title="From" data-tip="Pick a custom start date" data-tip-pos="below">
+    <span class="date-sep">to</span>
+    <input type="date" class="date-input" id="dateTo" title="To" data-tip="Pick a custom end date" data-tip-pos="below">
+  </div>
+
+  <!-- KPI Cards -->
+  <section class="kpi-grid" id="kpiGrid">
+    <div class="card fade-up" style="animation-delay:0.05s" data-tip="Total number of enquiries received in the selected time period. Includes email, phone, social, and walk-in leads.">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="8" width="3" height="7" rx="0.5"/><rect x="6.5" y="4" width="3" height="11" rx="0.5"/><rect x="12" y="1" width="3" height="14" rx="0.5"/></svg></div>
+      <div class="card-label">Leads</div>
+      <div class="card-value" id="kpiLeads"><div class="skeleton skeleton-value"></div></div>
+      <div class="card-sub" id="kpiLeadsSub"></div>
+    </div>
+    <div class="card fade-up" style="animation-delay:0.1s" data-tip="Leads ready to book NOW. These people asked about dates, pricing, or want to schedule a session. Follow up immediately!">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1C8 1 3 6 3 10a5 5 0 0 0 10 0C13 6 8 1 8 1z"/><path d="M8 7c0 0-2 2-2 4a2 2 0 0 0 4 0c0-2-2-4-2-4z"/></svg></div>
+      <div class="card-label">Hot Leads</div>
+      <div class="card-value" id="kpiHot" style="color:var(--hot)"><div class="skeleton skeleton-value"></div></div>
+      <div class="card-sub" id="kpiHotSub"></div>
+    </div>
+    <div class="card fade-up" style="animation-delay:0.15s" data-tip="Sessions that have been confirmed and booked. The percentage shows your lead-to-booking conversion rate.">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M1 7h14"/><path d="M5 1v4"/><path d="M11 1v4"/></svg></div>
+      <div class="card-label">Bookings</div>
+      <div class="card-value" id="kpiBookings"><div class="skeleton skeleton-value"></div></div>
+      <div class="card-sub" id="kpiBookingsSub"></div>
+    </div>
+    <div class="card fade-up" style="animation-delay:0.2s" data-tip="Total revenue from paid bookings in the selected period. Only counts leads that have actually paid.">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3C9 2 7 2 6 3S5 5.5 6 6.5 9 8 10 9s1 3 0 4-3 1-4 0"/><path d="M8 1v2"/><path d="M8 13v2"/></svg></div>
+      <div class="card-label">Revenue</div>
+      <div class="card-value" id="kpiRevenue"><div class="skeleton skeleton-value"></div></div>
+      <div class="card-sub" id="kpiRevenueSub"></div>
+    </div>
+    <div class="card fade-up" style="animation-delay:0.25s" data-tip="How fast enquiries get a reply. The AI auto-responder targets under 5 minutes. Lower is better!">
+      <div class="kpi-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1L3 9h5l-1 6 6-8H8l1-6z"/></svg></div>
+      <div class="card-label">Avg Response</div>
+      <div class="card-value" id="kpiResponse"><div class="skeleton skeleton-value"></div></div>
+      <div class="card-sub" id="kpiResponseSub"></div>
+    </div>
+  </section>
+
+  <!-- Charts Row 1 -->
+  <section class="chart-grid">
+    <div class="card fade-up" style="animation-delay:0.3s">
+      <div class="chart-title" data-tip="Where your leads are coming from: Email, Phone, Instagram, Facebook, or Walk-ins. Helps you see which channels work best." data-tip-pos="below">Lead Sources</div>
+      <div class="chart-wrap"><canvas id="chartSources"></canvas></div>
+    </div>
+    <div class="card fade-up" style="animation-delay:0.35s">
+      <div class="chart-title" data-tip="Number of confirmed bookings for each day this week (Monday to Sunday). See your busiest days at a glance." data-tip-pos="below">Bookings This Week</div>
+      <div class="chart-wrap"><canvas id="chartBookings"></canvas></div>
+    </div>
+  </section>
+
+  <!-- Charts Row 2 -->
+  <section class="chart-grid">
+    <div class="card fade-up" style="animation-delay:0.4s">
+      <div class="chart-title" data-tip="How ready your leads are to book. Hot = wants to book now. Warm = interested, asking questions. Cool = just browsing." data-tip-pos="below">Lead Temperature</div>
+      <div class="chart-wrap"><canvas id="chartScores"></canvas></div>
+    </div>
+    <div class="card fade-up" style="animation-delay:0.45s">
+      <div class="chart-title" data-tip="Total leads per week over the last 4 weeks. Shows whether enquiry volume is growing or slowing down." data-tip-pos="below">Weekly Trend</div>
+      <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
+    </div>
+  </section>
+
+  <!-- Conversion Funnel -->
+  <div class="card fade-up" style="animation-delay:0.5s; margin-bottom:24px">
+    <div class="chart-title" data-tip="Your sales pipeline from first enquiry to payment. Each stage shows how many leads progress. The % shows conversion from the previous stage." data-tip-pos="below">Conversion Funnel</div>
+    <div class="funnel" id="funnel"></div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="card fade-up" style="animation-delay:0.55s; margin-bottom:24px">
+    <div class="chart-title" data-tip="Live feed of incoming emails, phone calls, social messages, and bookings. Green 'Auto-handled' means the AI replied automatically." data-tip-pos="below">Recent Activity</div>
+    <div class="activity-feed" id="activityFeed">
+      <div style="padding:40px 0;text-align:center;color:var(--text-muted);font-size:13px;">Loading activity...</div>
+    </div>
+  </div>
+
+  </div><!-- /dashboard-content -->
+
+  <!-- Footer -->
+  <footer class="footer fade-up" style="animation-delay:0.6s">
+    <div class="quick-links" id="quickLinks"></div>
+    <div class="powered-by" id="poweredBy"></div>
+  </footer>
+</div>
+
+<!-- Help Overlay -->
+<div class="help-overlay" id="helpOverlay">
+  <div class="help-modal">
+    <div class="help-header">
+      <h2>Quick Start Guide</h2>
+      <button class="help-close" id="helpClose">&times;</button>
+    </div>
+
+    <div class="help-section">
+      <h3>Getting Started</h3>
+      <div class="help-item">
+        <div class="help-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="14" height="8" rx="4"/><circle cx="5" cy="8" r="2.5"/></svg></div>
+        <div class="help-item-text">
+          <h4>DEMO / LIVE Toggle</h4>
+          <p><strong>DEMO</strong> shows sample data so you can see what the dashboard looks like in action. <strong>LIVE</strong> connects to your real Google Sheet and shows actual business data. Start with DEMO to explore, switch to LIVE when ready.</p>
+        </div>
+      </div>
+      <div class="help-item">
+        <div class="help-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="14" height="12" rx="2"/><path d="M1 7h14"/><path d="M5 1v4"/><path d="M11 1v4"/></svg></div>
+        <div class="help-item-text">
+          <h4>Date Filters</h4>
+          <p>Use the <strong>Today / 7 Days / 30 Days / All Time</strong> buttons to change what time period you're looking at. You can also pick a custom date range using the date pickers.</p>
+        </div>
+      </div>
+      <div class="help-item">
+        <div class="help-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 8a6.5 6.5 0 0 1 11.48-4.17M14.5 8a6.5 6.5 0 0 1-11.48 4.17"/><polyline points="1.5 3 1.5 7 5.5 7"/><polyline points="14.5 13 14.5 9 10.5 9"/></svg></div>
+        <div class="help-item-text">
+          <h4>Refresh</h4>
+          <p>Data auto-refreshes every 5 minutes. Hit the refresh button (top right) to update instantly. The green dot shows your data is live and connected.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <h3>Understanding Your Numbers</h3>
+      <div class="help-item">
+        <div class="help-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="1" y="8" width="3" height="7" rx="0.5"/><rect x="6.5" y="4" width="3" height="11" rx="0.5"/><rect x="12" y="1" width="3" height="14" rx="0.5"/></svg></div>
+        <div class="help-item-text">
+          <h4>KPI Cards (Top Row)</h4>
+          <p><strong>Leads</strong> = total enquiries. <strong>Hot Leads</strong> = people ready to book. <strong>Bookings</strong> = confirmed sessions. <strong>Revenue</strong> = money from paid sessions. <strong>Avg Response</strong> = how fast enquiries get a reply.</p>
+        </div>
+      </div>
+      <div class="help-item">
+        <div class="help-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 12 5 6 9 9 15 2"/><polyline points="11 2 15 2 15 6"/></svg></div>
+        <div class="help-item-text">
+          <h4>Charts</h4>
+          <p><strong>Lead Sources</strong> shows where enquiries come from. <strong>Bookings This Week</strong> shows daily bookings. <strong>Lead Temperature</strong> shows how ready leads are. <strong>Weekly Trend</strong> tracks growth over 4 weeks.</p>
+        </div>
+      </div>
+      <div class="help-item">
+        <div class="help-icon"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 2h14l-4 5v4l-2 3V7L1 2z"/></svg></div>
+        <div class="help-item-text">
+          <h4>Conversion Funnel</h4>
+          <p>Shows the journey from first enquiry to payment: <strong>New</strong> &rarr; <strong>Replied</strong> &rarr; <strong>Engaged</strong> &rarr; <strong>Booked</strong> &rarr; <strong>Paid</strong>. The percentages show how many move to the next stage.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <h3>Tips</h3>
+      <div class="help-tip">
+        <strong>Hover over anything</strong> on the dashboard to see a quick explanation of what it means.<br><br>
+        <strong>Check daily</strong> &mdash; open the dashboard once a day to see new leads, bookings, and any callbacks needed.<br><br>
+        <strong>Hot leads need fast action</strong> &mdash; when you see a Hot lead notification, follow up within the hour for the best conversion rate.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── Apply config to DOM & CSS variables ──
+  function applyConfig() {
+    const t = CONFIG.theme;
+    const r = document.documentElement.style;
+    r.setProperty("--primary", t.primary);
+    r.setProperty("--primary-light", t.primaryLight);
+    r.setProperty("--accent", t.accent);
+    r.setProperty("--accent-end", t.accentEnd);
+    r.setProperty("--card-bg", t.cardBg);
+    r.setProperty("--card-border", t.cardBorder);
+    r.setProperty("--text", t.text);
+    r.setProperty("--text-muted", t.textMuted);
+    r.setProperty("--success", t.success);
+    r.setProperty("--warning", t.warning);
+    r.setProperty("--hot", t.hot);
+    r.setProperty("--warm", t.warm);
+    r.setProperty("--cool", t.cool);
+
+    document.getElementById("headerTitle").textContent = CONFIG.businessName;
+    document.getElementById("headerTagline").textContent = CONFIG.tagline;
+    document.title = CONFIG.businessName + " | " + CONFIG.tagline;
+
+    if (CONFIG.logo) {
+      const logo = document.getElementById("headerLogo");
+      logo.src = CONFIG.logo;
+      logo.style.display = "block";
+    }
+
+    // Quick links
+    const linksEl = document.getElementById("quickLinks");
+    linksEl.innerHTML = "";
+    Object.values(CONFIG.links).forEach(function (l) {
+      const a = document.createElement("a");
+      a.className = "quick-link";
+      a.href = l.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = l.label;
+      linksEl.appendChild(a);
+    });
+
+    // Powered by
+    const pb = CONFIG.poweredBy;
+    document.getElementById("poweredBy").innerHTML =
+      "Powered by <a href=\"" + pb.url + "\" target=\"_blank\">" + pb.name + "</a> &middot; Data refreshes every " + (CONFIG.refreshInterval / 60000) + "m";
+  }
+
+  // ── Fetch Google Sheets data via published JSONP endpoint ──
+  function fetchSheetData(sheetName) {
+    var url = "https://docs.google.com/spreadsheets/d/" + CONFIG.sheetId +
+      "/gviz/tq?tqx=out:json&sheet=" + encodeURIComponent(sheetName);
+    return fetch(url)
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        // Strip JSONP wrapper: starts with "/*O_o*/\ngoogle.visualization.Query.setResponse(" and ends with ");"
+        var start = text.indexOf("(");
+        var end = text.lastIndexOf(")");
+        if (start === -1 || end === -1) throw new Error("Invalid response");
+        var json = JSON.parse(text.substring(start + 1, end));
+        return parseGvizTable(json.table);
+      });
+  }
+
+  function parseGvizTable(table) {
+    var cols = table.cols.map(function (c) { return c.label || c.id; });
+    return table.rows.map(function (row) {
+      var obj = {};
+      row.c.forEach(function (cell, i) {
+        obj[cols[i]] = cell ? (cell.v !== null && cell.v !== undefined ? cell.v : (cell.f || "")) : "";
+      });
+      return obj;
+    });
+  }
+
+  // ── Date filter state ──
+  var dateRange = "today"; // "today", "7d", "30d", "all", or "custom"
+  var customFrom = null;
+  var customTo = null;
+
+  // Parse date (dd/MM/yyyy or yyyy-MM-dd)
+  function parseDate(str) {
+    if (!str) return null;
+    var s = String(str);
+    var parts = s.split("/");
+    if (parts.length === 3 && parts[0].length <= 2) return new Date(+parts[2], +parts[1] - 1, +parts[0]);
+    return new Date(s);
+  }
+
+  function getDateBounds() {
+    var now = new Date();
+    var start, end;
+    end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    if (dateRange === "today") {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    } else if (dateRange === "7d") {
+      start = new Date(now); start.setDate(now.getDate() - 6); start.setHours(0,0,0,0);
+    } else if (dateRange === "30d") {
+      start = new Date(now); start.setDate(now.getDate() - 29); start.setHours(0,0,0,0);
+    } else if (dateRange === "custom" && customFrom && customTo) {
+      start = new Date(customFrom); start.setHours(0,0,0,0);
+      end = new Date(customTo); end.setHours(23,59,59);
+    } else {
+      // all time
+      start = new Date(2020, 0, 1);
+    }
+    return { start: start, end: end };
+  }
+
+  // ── Calculate metrics from raw lead rows ──
+  function calculateMetrics(leads, messages) {
+    var now = new Date();
+    var bounds = getDateBounds();
+
+    // Filter leads by date range
+    var monthLeads = leads.filter(function (l) {
+      var d = parseDate(l.Date);
+      return d && d >= bounds.start && d <= bounds.end;
+    });
+
+    var total = monthLeads.length;
+    var hot = monthLeads.filter(function (l) { return l.Score === "Hot"; }).length;
+    var warm = monthLeads.filter(function (l) { return l.Score === "Warm"; }).length;
+    var cool = monthLeads.filter(function (l) { return l.Score === "Cool"; }).length;
+    var booked = monthLeads.filter(function (l) { return String(l["Booked?"]).toLowerCase() === "yes"; }).length;
+
+    // Revenue
+    var revenue = 0;
+    monthLeads.forEach(function (l) {
+      var v = parseFloat(String(l.Revenue).replace(/[^0-9.]/g, ""));
+      if (!isNaN(v)) revenue += v;
+    });
+
+    // Sources
+    var sources = {};
+    monthLeads.forEach(function (l) {
+      var s = l.Source || "Other";
+      sources[s] = (sources[s] || 0) + 1;
+    });
+
+    // Bookings per day of week (this week)
+    var startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
+    startOfWeek.setHours(0, 0, 0, 0);
+    var dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    var bookingsPerDay = [0, 0, 0, 0, 0, 0, 0];
+    monthLeads.forEach(function (l) {
+      if (String(l["Booked?"]).toLowerCase() !== "yes") return;
+      var d = parseDate(l.Date);
+      if (!d || d < startOfWeek) return;
+      var dayIdx = (d.getDay() + 6) % 7; // Mon=0
+      bookingsPerDay[dayIdx]++;
+    });
+
+    // Weekly trend (4 weeks)
+    var weeks = [0, 0, 0, 0];
+    var weekLabels = [];
+    for (var w = 3; w >= 0; w--) {
+      var ws = new Date(now);
+      ws.setDate(now.getDate() - (w * 7) - now.getDay() + 1);
+      ws.setHours(0, 0, 0, 0);
+      var we = new Date(ws);
+      we.setDate(ws.getDate() + 7);
+      weekLabels.push("W" + (4 - w));
+      monthLeads.forEach(function (l) {
+        var d = parseDate(l.Date);
+        if (d && d >= ws && d < we) weeks[3 - w]++;
+      });
+    }
+
+    // Funnel
+    var replied = monthLeads.filter(function (l) { return l["Auto-Reply"] === "Yes" || l.Status === "Replied" || l.Status === "Engaged" || l.Status === "Booked"; }).length;
+    var engaged = monthLeads.filter(function (l) { return l.Status === "Engaged" || l.Status === "Booked"; }).length;
+    var paid = monthLeads.filter(function (l) { return l.Revenue && parseFloat(String(l.Revenue).replace(/[^0-9.]/g, "")) > 0; }).length;
+
+    // Avg response time from messages
+    var responseTimes = [];
+    if (messages && messages.length) {
+      messages.forEach(function (m) {
+        if (m["Response Time"]) {
+          var rt = String(m["Response Time"]);
+          // Parse formats like "3m12s", "2m", "45s", or just a number (minutes)
+          var mins = 0;
+          var mMatch = rt.match(/(\d+)\s*m/);
+          var sMatch = rt.match(/(\d+)\s*s/);
+          if (mMatch) mins += parseInt(mMatch[1]);
+          if (sMatch) mins += parseInt(sMatch[1]) / 60;
+          if (!mMatch && !sMatch) { var n = parseFloat(rt); if (!isNaN(n)) mins = n; }
+          if (mins > 0) responseTimes.push(mins);
+        }
+      });
+    }
+    var avgResponse = responseTimes.length > 0
+      ? responseTimes.reduce(function (a, b) { return a + b; }, 0) / responseTimes.length
+      : 0;
+
+    // Recent activity (from messages, last 15)
+    var recent = (messages || []).slice(-15).reverse().map(function (m) {
+      return {
+        channel: m.Channel || "Email",
+        from: m.From || "",
+        summary: m["Subject/Summary"] || "",
+        category: m.Category || "",
+        date: m.Date || "",
+        time: m.Time || "",
+        autoHandled: m["Auto-Handled"] === "Yes"
+      };
+    });
+
+    return {
+      total: total,
+      hot: hot,
+      warm: warm,
+      cool: cool,
+      booked: booked,
+      revenue: revenue,
+      sources: sources,
+      bookingsPerDay: bookingsPerDay,
+      dayNames: dayNames,
+      weeks: weeks,
+      weekLabels: weekLabels,
+      funnel: {
+        new: total,
+        replied: replied,
+        engaged: engaged,
+        booked: booked,
+        paid: paid
+      },
+      avgResponse: avgResponse,
+      recent: recent,
+      autoHandledPct: total > 0 ? Math.round((replied / total) * 100) : 0
+    };
+  }
+
+  // ── Animated counter ──
+  function animateValue(el, end, prefix, suffix) {
+    prefix = prefix || "";
+    suffix = suffix || "";
+    var start = 0;
+    var duration = 900;
+    var startTime = null;
+    function ease(t) { return 1 - Math.pow(1 - t, 3); }
+    function step(ts) {
+      if (!startTime) startTime = ts;
+      var p = Math.min((ts - startTime) / duration, 1);
+      var val = Math.round(ease(p) * end);
+      el.textContent = prefix + val.toLocaleString() + suffix;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    if (end === 0) { el.textContent = prefix + "0" + suffix; return; }
+    requestAnimationFrame(step);
+  }
+
+  // ── Render KPIs ──
+  function renderKPIs(m) {
+    animateValue(document.getElementById("kpiLeads"), m.total);
+    document.getElementById("kpiLeadsSub").textContent = m.autoHandledPct + "% auto-handled";
+
+    animateValue(document.getElementById("kpiHot"), m.hot);
+    document.getElementById("kpiHotSub").textContent = (m.total > 0 ? Math.round((m.hot / m.total) * 100) : 0) + "% of all leads";
+
+    animateValue(document.getElementById("kpiBookings"), m.booked);
+    document.getElementById("kpiBookingsSub").textContent = (m.total > 0 ? Math.round((m.booked / m.total) * 100) : 0) + "% conversion";
+
+    animateValue(document.getElementById("kpiRevenue"), Math.round(m.revenue), "\u00A3");
+    document.getElementById("kpiRevenueSub").textContent = "This month";
+
+    var mins = Math.floor(m.avgResponse);
+    var secs = Math.round((m.avgResponse - mins) * 60);
+    document.getElementById("kpiResponse").textContent = m.avgResponse > 0 ? mins + "m" + (secs > 0 ? secs + "s" : "") : "--";
+    document.getElementById("kpiResponseSub").textContent = m.avgResponse > 0 ? "Average reply time" : "No data yet";
+  }
+
+  // ── Chart instances ──
+  var charts = {};
+
+  function destroyCharts() {
+    Object.keys(charts).forEach(function (k) { if (charts[k]) charts[k].destroy(); });
+    charts = {};
+  }
+
+  function renderCharts(m) {
+    destroyCharts();
+    var t = CONFIG.theme;
+
+    // Defaults
+    Chart.defaults.color = t.textMuted;
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.plugins.legend.display = false;
+
+    // Sources doughnut
+    var sourceLabels = Object.keys(m.sources);
+    var sourceData = Object.values(m.sources);
+    var sourceColors = [t.accent, t.success, "#a855f7", t.warning, t.hot, t.accentEnd];
+    charts.sources = new Chart(document.getElementById("chartSources"), {
+      type: "doughnut",
+      data: {
+        labels: sourceLabels,
+        datasets: [{
+          data: sourceData.length ? sourceData : [1],
+          backgroundColor: sourceData.length ? sourceColors.slice(0, sourceLabels.length) : ["rgba(255,255,255,0.06)"],
+          borderWidth: 0,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "65%",
+        plugins: {
+          legend: { display: true, position: "right", labels: { padding: 14, usePointStyle: true, pointStyleWidth: 8, font: { size: 11, weight: 500 } } },
+          tooltip: { backgroundColor: "#1e293b", titleFont: { weight: 600 }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 8 }
+        }
+      }
+    });
+
+    // Bookings bar
+    charts.bookings = new Chart(document.getElementById("chartBookings"), {
+      type: "bar",
+      data: {
+        labels: m.dayNames,
+        datasets: [{
+          data: m.bookingsPerDay,
+          backgroundColor: function (ctx) {
+            var g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 220);
+            g.addColorStop(0, t.accent);
+            g.addColorStop(1, t.accentEnd);
+            return g;
+          },
+          borderRadius: 6,
+          barPercentage: 0.55
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { display: false }, border: { display: false } },
+          y: { grid: { color: "rgba(255,255,255,0.04)" }, border: { display: false }, ticks: { stepSize: 1 }, beginAtZero: true }
+        },
+        plugins: { tooltip: { backgroundColor: "#1e293b", cornerRadius: 8, padding: 10 } }
+      }
+    });
+
+    // Scores doughnut
+    charts.scores = new Chart(document.getElementById("chartScores"), {
+      type: "doughnut",
+      data: {
+        labels: ["Hot", "Warm", "Cool"],
+        datasets: [{
+          data: (m.hot + m.warm + m.cool) > 0 ? [m.hot, m.warm, m.cool] : [1, 1, 1],
+          backgroundColor: [t.hot, t.warm, t.cool],
+          borderWidth: 0,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "65%",
+        plugins: {
+          legend: { display: true, position: "right", labels: { padding: 14, usePointStyle: true, pointStyleWidth: 8, font: { size: 11, weight: 500 } } },
+          tooltip: { backgroundColor: "#1e293b", cornerRadius: 8, padding: 10 }
+        }
+      }
+    });
+
+    // Weekly trend line
+    charts.trend = new Chart(document.getElementById("chartTrend"), {
+      type: "line",
+      data: {
+        labels: m.weekLabels,
+        datasets: [{
+          data: m.weeks,
+          borderColor: t.accent,
+          backgroundColor: function (ctx) {
+            var g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 220);
+            g.addColorStop(0, "rgba(59,130,246,0.25)");
+            g.addColorStop(1, "rgba(59,130,246,0)");
+            return g;
+          },
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: t.accent,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          borderWidth: 2.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { display: false }, border: { display: false } },
+          y: { grid: { color: "rgba(255,255,255,0.04)" }, border: { display: false }, ticks: { stepSize: 1 }, beginAtZero: true }
+        },
+        plugins: { tooltip: { backgroundColor: "#1e293b", cornerRadius: 8, padding: 10 } }
+      }
+    });
+  }
+
+  // ── Render funnel ──
+  function renderFunnel(f) {
+    var el = document.getElementById("funnel");
+    var max = f.new || 1;
+    var funnelColors = ["#60a5fa", "#a78bfa", "#fbbf24", "#f97316", "#34d399"];
+    var stages = [
+      { label: "New", value: f.new },
+      { label: "Replied", value: f.replied },
+      { label: "Engaged", value: f.engaged },
+      { label: "Booked", value: f.booked },
+      { label: "Paid", value: f.paid }
+    ];
+    el.innerHTML = "";
+    stages.forEach(function (s, i) {
+      var pct = Math.round((s.value / max) * 100) || 0;
+      var convPct = i > 0 && stages[i - 1].value > 0 ? Math.round((s.value / stages[i - 1].value) * 100) : 100;
+      var row = document.createElement("div");
+      row.className = "funnel-row";
+      row.innerHTML =
+        '<div class="funnel-label">' + s.label + '</div>' +
+        '<div class="funnel-track">' +
+          '<div class="funnel-bar" style="width:0%;background:' + funnelColors[i] + '" data-width="' + pct + '%"></div>' +
+          '<div class="funnel-value">' + s.value + (i > 0 ? " (" + convPct + "%)" : "") + '</div>' +
+        '</div>';
+      el.appendChild(row);
+    });
+    // Animate bars
+    requestAnimationFrame(function () {
+      setTimeout(function () {
+        el.querySelectorAll(".funnel-bar").forEach(function (bar) {
+          bar.style.width = bar.dataset.width;
+        });
+      }, 100);
+    });
+  }
+
+  // ── Render activity feed ──
+  function renderActivity(items) {
+    var el = document.getElementById("activityFeed");
+    if (!items.length) {
+      el.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--text-muted);font-size:13px;">No activity yet</div>';
+      return;
+    }
+    el.innerHTML = "";
+    items.forEach(function (item) {
+      var iconClass = "email";
+      var icon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="14" height="10" rx="2"/><path d="M1 5l7 4 7-4"/></svg>';
+      var ch = String(item.channel).toLowerCase();
+      if (ch.indexOf("phone") !== -1 || ch.indexOf("call") !== -1) { iconClass = "phone"; icon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3c0-1 1-2 2-2h1l2 3-1.5 1.5a8 8 0 0 0 5 5L12 9l3 2v1c0 1-1 2-2 2C7 14 2 9 2 3z"/></svg>'; }
+      else if (ch.indexOf("instagram") !== -1 || ch.indexOf("facebook") !== -1 || ch.indexOf("social") !== -1 || ch.indexOf("twitter") !== -1) { iconClass = "social"; icon = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l1-4 3 2 4-8"/><circle cx="4" cy="12" r="1.5"/><circle cx="8" cy="10" r="1.5"/><circle cx="12" cy="2" r="1.5"/></svg>'; }
+
+      var div = document.createElement("div");
+      div.className = "activity-item";
+      div.innerHTML =
+        '<div class="activity-icon ' + iconClass + '">' + icon + '</div>' +
+        '<div>' +
+          '<div class="activity-text">' + escapeHtml(item.from || item.channel) + (item.summary ? " &mdash; " + escapeHtml(item.summary) : "") + '</div>' +
+          '<div class="activity-time">' + escapeHtml(item.date) + " " + escapeHtml(item.time) +
+            (item.category ? " &middot; " + escapeHtml(item.category) : "") +
+            (item.autoHandled ? ' &middot; <span style="color:var(--success)">Auto-handled</span>' : "") +
+          '</div>' +
+        '</div>';
+      el.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s) {
+    if (!s) return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // ── Sample data for demo/fallback ──
+  function getSampleData() {
+    var now = new Date();
+    var dd = function (d) { return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear(); };
+    var tt = function (h) { return String(h).padStart(2, "0") + ":" + String(Math.floor(Math.random() * 60)).padStart(2, "0"); };
+    var names = ["Sarah Mitchell", "James Kowalski", "Priya Sharma", "Tom O'Brien", "Emily Chen", "David Wright", "Rachel Kim", "Marcus Brown", "Olivia Taylor", "Alex Rodriguez",
+      "Hannah Moore", "Sam Osei", "Lucy Wang", "Chris Patel", "Fiona Adams", "Noah Clarke", "Isla Murray", "Zara Khan", "Ben Johnson", "Mia Thompson", "Leo Hall", "Ava Green", "Jake Lewis"];
+    var categories = ["Parent", "Project Client", "Booking", "Pricing", "Event", "Parent", "Project Client", "Booking", "Parent", "Pricing",
+      "Booking", "Event", "Parent", "Project Client", "Booking", "Parent", "Pricing", "Event", "Booking", "Parent", "Project Client", "Booking", "Parent"];
+    var scores = ["Hot", "Hot", "Hot", "Warm", "Cool", "Hot", "Warm", "Hot", "Warm", "Cool",
+      "Hot", "Cool", "Warm", "Warm", "Hot", "Hot", "Warm", "Cool", "Hot", "Warm", "Warm", "Hot", "Warm"];
+    var sources = ["Email", "Phone", "Email", "Email", "Instagram", "Phone", "Email", "Email", "Phone", "Facebook",
+      "Email", "Walk-in", "Phone", "Email", "Email", "Phone", "Email", "Instagram", "Phone", "Email", "Email", "Phone", "Email"];
+    var statuses = ["Booked", "Replied", "Booked", "Engaged", "New", "Booked", "Engaged", "Booked", "Replied", "New",
+      "Booked", "New", "Engaged", "Replied", "Booked", "Booked", "Engaged", "New", "Booked", "Replied", "Engaged", "Booked", "Engaged"];
+    var revenues = [39, 0, 90, 0, 0, 45, 0, 39, 0, 0, 90, 0, 0, 0, 39, 45, 0, 0, 90, 0, 0, 39, 0];
+
+    var leads = names.map(function (n, i) {
+      var d = new Date(now);
+      d.setDate(d.getDate() - Math.floor(i * 1.3));
+      return {
+        Date: dd(d),
+        Time: tt(9 + Math.floor(Math.random() * 10)),
+        Name: n,
+        Email: n.toLowerCase().replace(/[^a-z]/g, "") + "@email.com",
+        Phone: i % 3 === 0 ? "07" + String(Math.floor(Math.random() * 900000000 + 100000000)) : "",
+        Source: sources[i],
+        Category: categories[i],
+        Score: scores[i],
+        "Auto-Reply": "Yes",
+        Status: statuses[i],
+        "Booked?": statuses[i] === "Booked" ? "Yes" : "No",
+        Revenue: revenues[i] > 0 ? revenues[i] : "",
+        Summary: categories[i] === "Parent" ? "Enquiry about services for family member" :
+                 categories[i] === "Project Client" ? "New client interested in project" :
+                 categories[i] === "Booking" ? "Wants to book a session" :
+                 categories[i] === "Pricing" ? "Asking about pricing and packages" :
+                 "Interested in upcoming event"
+      };
+    });
+
+    var messages = leads.map(function (l, i) {
+      return {
+        Date: l.Date,
+        Time: l.Time,
+        Direction: "Inbound",
+        Channel: l.Source,
+        From: l.Name + " (" + l.Email + ")",
+        "Subject/Summary": l.Summary,
+        Category: l.Category,
+        "Response Time": Math.floor(Math.random() * 4 + 1) + "m" + Math.floor(Math.random() * 50 + 10) + "s",
+        "Auto-Handled": "Yes"
+      };
+    });
+
+    return { leads: leads, messages: messages };
+  }
+
+  // ── Mode state ──
+  var mode = "demo"; // "demo", "live", or "setup"
+  var usingSample = false;
+  var liveCache = { leads: [], messages: [] };
+
+  function setMode(newMode) {
+    mode = newMode;
+    var btnDemo = document.getElementById("btnDemo");
+    var btnLive = document.getElementById("btnLive");
+    var btnSetup = document.getElementById("btnSetup");
+    var dot = document.querySelector(".live-dot");
+    var dashContent = document.getElementById("dashboardContent");
+    var setupPanel = document.getElementById("setupPanel");
+
+    btnDemo.classList.remove("active");
+    btnLive.classList.remove("active");
+    btnSetup.classList.remove("active");
+
+    if (mode === "setup") {
+      btnSetup.classList.add("active");
+      dot.style.background = "var(--accent)";
+      dashContent.classList.add("hidden");
+      setupPanel.classList.add("visible");
+      document.getElementById("lastUpdated").textContent = "Scan mode";
+      return;
+    }
+
+    dashContent.classList.remove("hidden");
+    setupPanel.classList.remove("visible");
+
+    if (mode === "demo") {
+      btnDemo.classList.add("active");
+      dot.style.background = "var(--warning)";
+    } else {
+      btnLive.classList.add("active");
+      dot.style.background = "var(--success)";
+    }
+    loadData();
+  }
+
+  // ── Scanner logic ──
+  function initScanner() {
+    var scanBtn = document.getElementById("scanBtn");
+    var scanInput = document.getElementById("scanUrl");
+    var scanStatus = document.getElementById("scanStatus");
+    var scanStatusText = document.getElementById("scanStatusText");
+    var scanResults = document.getElementById("scanResults");
+
+    scanBtn.addEventListener("click", function () { runScan(); });
+    scanInput.addEventListener("keypress", function (e) { if (e.key === "Enter") runScan(); });
+    document.addEventListener("downloadScan", function () { downloadScanPdf(); });
+    document.addEventListener("saveScan", function () { saveToDatabase(); });
+    document.addEventListener("rescan", function () { runScan(); });
+
+    async function runScan() {
+      var clientName = (document.getElementById("scanName") || {}).value || "";
+      var clientEmail = (document.getElementById("scanEmail") || {}).value || "";
+      var clientPhone = (document.getElementById("scanPhone") || {}).value || "";
+      var clientLocation = (document.getElementById("scanLocation") || {}).value || "";
+      var clientPainPoints = (document.getElementById("scanPainPoints") || {}).value || "";
+
+      var url = scanInput.value.trim();
+      if (!url) { scanInput.focus(); return; }
+      if (!url.startsWith("http")) url = "https://" + url;
+
+      scanBtn.disabled = true;
+      scanStatus.style.display = "block";
+      scanResults.classList.remove("visible");
+      scanResults.innerHTML = "";
+
+      var apiKey = CONFIG.groqApiKey || "";
+      if (!apiKey) {
+        // No API key — use demo simulation
+        scanStatusText.textContent = "Scanning website...";
+        setTimeout(function () { scanStatusText.textContent = "Extracting business info..."; }, 800);
+        setTimeout(function () { scanStatusText.textContent = "Searching Reddit..."; }, 1500);
+        setTimeout(function () { scanStatusText.textContent = "Running AI analysis..."; }, 2200);
+        setTimeout(function () {
+          renderScanResults(getDemoScanResult(url));
+          scanStatus.style.display = "none";
+          scanBtn.disabled = false;
+        }, 3500);
+        return;
+      }
+
+      var domain = "";
+      try { domain = new URL(url).hostname.replace("www.", ""); } catch(e) { domain = url; }
+
+      // Step 1: Fetch website via CORS proxy
+      scanStatusText.textContent = "Fetching website...";
+      var siteHtml = "";
+      try {
+        var proxyRes = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url));
+        var proxyData = await proxyRes.json();
+        siteHtml = proxyData.contents || "";
+      } catch(e) { siteHtml = ""; }
+
+      // Step 2: Search Reddit
+      scanStatusText.textContent = "Searching Reddit...";
+      var redditData = [];
+      try {
+        var redditRes = await fetch("https://www.reddit.com/search.json?q=" + encodeURIComponent(domain) + "&limit=10&sort=relevance");
+        var redditJson = await redditRes.json();
+        redditData = (redditJson.data && redditJson.data.children || []).map(function(p) {
+          return {
+            title: p.data.title,
+            subreddit: p.data.subreddit,
+            url: "https://reddit.com" + p.data.permalink,
+            score: p.data.score,
+            created: new Date(p.data.created_utc * 1000).toISOString().split("T")[0]
+          };
+        });
+      } catch(e) {}
+
+      // Step 3: Extract text, social links, contacts from HTML
+      var textContent = siteHtml
+        .replace(/<script[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 8000);
+
+      var socialPatterns = {
+        instagram: /https?:\/\/(www\.)?instagram\.com\/[a-zA-Z0-9_.]+/gi,
+        facebook: /https?:\/\/(www\.)?facebook\.com\/[a-zA-Z0-9_.]+/gi,
+        twitter: /https?:\/\/(www\.)?(twitter|x)\.com\/[a-zA-Z0-9_]+/gi,
+        linkedin: /https?:\/\/(www\.)?linkedin\.com\/(company|in)\/[a-zA-Z0-9_-]+/gi,
+        tiktok: /https?:\/\/(www\.)?tiktok\.com\/@[a-zA-Z0-9_.]+/gi,
+        youtube: /https?:\/\/(www\.)?youtube\.com\/(c\/|channel\/|@)[a-zA-Z0-9_-]+/gi
+      };
+      var foundSocial = {};
+      Object.keys(socialPatterns).forEach(function(p) {
+        var match = siteHtml.match(socialPatterns[p]);
+        if (match) foundSocial[p] = match[0];
+      });
+
+      var phones = siteHtml.match(/(?:tel:)?(?:\+44|0)[\d\s()\-]{9,13}/g) || [];
+      var emails = siteHtml.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g) || [];
+      emails = emails.filter(function(e) { return e.indexOf("@example") === -1 && e.indexOf("@sentry") === -1 && e.indexOf("@wix") === -1; });
+
+      // Step 4: AI deep analysis via Groq
+      scanStatusText.textContent = "Running AI deep analysis...";
+
+      var aiPrompt = "Analyze this business website and provide a comprehensive intelligence report. Provide CURRENT, UP-TO-DATE data only. Today's date is " + new Date().toISOString().split("T")[0] + ".\n\n" +
+        "WEBSITE URL: " + url + "\nDOMAIN: " + domain + "\n\n" +
+        (clientName ? "CLIENT CONTACT: " + clientName + "\n" : "") +
+        (clientEmail ? "CLIENT EMAIL: " + clientEmail + "\n" : "") +
+        (clientPhone ? "CLIENT PHONE: " + clientPhone + "\n" : "") +
+        (clientLocation ? "BUSINESS LOCATION: " + clientLocation + "\n" : "") +
+        (clientPainPoints ? "KNOWN PAIN POINTS / NOTES:\n" + clientPainPoints + "\n\n" : "") +
+        "WEBSITE CONTENT (extracted text):\n" + textContent + "\n\n" +
+        "SOCIAL MEDIA FOUND ON SITE:\n" + JSON.stringify(foundSocial) + "\n\n" +
+        "CONTACT INFO FOUND:\nPhones: " + phones.slice(0,3).join(", ") + "\nEmails: " + emails.slice(0,3).join(", ") + "\n\n" +
+        "REDDIT MENTIONS (" + redditData.length + " found):\n" +
+        redditData.slice(0,5).map(function(r) { return '- "' + r.title + '" (r/' + r.subreddit + ', score: ' + r.score + ')'; }).join("\n") + "\n\n" +
+        'Respond ONLY with valid JSON (no markdown, no code fences). Use this exact structure:\n' +
+        '{\n' +
+        '  "businessName": "string",\n  "industry": "string",\n' +
+        '  "description": "2-3 sentence description of what this business does",\n' +
+        '  "targetAudience": "who their customers are",\n' +
+        '  "address": "physical address if found, or empty string",\n' +
+        '  "phone": "main phone number or empty string",\n' +
+        '  "email": "main email or empty string",\n' +
+        '  "services": ["list", "of", "main", "services", "up to 8"],\n' +
+        '  "pricing": ["any pricing found, e.g. Studio hire from 30/hr"],\n' +
+        '  "team": "key team members if mentioned",\n' +
+        '  "socialMedia": {\n    "instagram": "URL or null",\n    "facebook": "URL or null",\n    "twitter": "URL or null",\n    "linkedin": "URL or null",\n    "tiktok": "URL or null",\n    "youtube": "URL or null",\n    "activePlatforms": ["list of active platform names"]\n  },\n' +
+        '  "redditSentiment": "positive/neutral/negative/mixed/none",\n' +
+        '  "redditHighlights": ["key themes from Reddit mentions"],\n' +
+        '  "competitors": [\n    {\n      "rank": 1,\n      "name": "Competitor Name",\n      "website": "https://...",\n      "threatLevel": "high/medium/low",\n      "description": "What they offer and why they compete",\n      "estimatedReviews": "approximate Google review count if known, e.g. ~200",\n      "estimatedRating": "approximate rating if known, e.g. 4.6",\n      "pricing": "their pricing if known",\n      "socialFollowing": "estimated social media following",\n      "strengths": "what they do well",\n      "weaknesses": "where they fall short vs this business"\n    }\n  ],\n' +
+        '  "strengths": ["3-5 business strengths"],\n' +
+        '  "weaknesses": ["3-5 gaps or weaknesses identified"],\n' +
+        '  "automationOpportunities": ["3-5 specific automation opportunities for an AI consultancy to pitch"],\n' +
+        '  "pitchAngle": "One compelling sentence on how AI automation would specifically help this business",\n' +
+        '  "estimatedSize": "small/medium/large",\n' +
+        '  "brandColors": { "primary": "#hex", "secondary": "#hex" }\n}\n\n' +
+        "IMPORTANT for competitors:\n" +
+        "- List up to 10 local competitors, ranked from CLOSEST competition (rank 1 = biggest threat) to lesser competitors\n" +
+        "- Focus on businesses in the same geographic area and industry\n" +
+        "- Include their website URL if known\n" +
+        "- Compare reviews, social following, pricing, and offers where possible\n" +
+        "- If you don't know exact numbers, give estimates with qualifiers like ~200 reviews\n" +
+        "- For each competitor explain WHY they are a threat and where this business beats them";
+
+      try {
+        var aiRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "user", content: aiPrompt }],
+            temperature: 0.3,
+            max_tokens: 4000
+          })
+        });
+        var aiJson = await aiRes.json();
+
+        if (aiJson.error) {
+          scanStatusText.textContent = "Groq API error: " + (aiJson.error.message || JSON.stringify(aiJson.error));
+          scanBtn.disabled = false;
+          return;
+        }
+
+        var content = aiJson.choices[0].message.content;
+        content = content.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        var analysis = JSON.parse(content);
+
+        // Merge: prefer actual URLs found on site over AI guesses
+        Object.keys(foundSocial).forEach(function(p) {
+          if (foundSocial[p] && analysis.socialMedia) {
+            analysis.socialMedia[p] = foundSocial[p];
+          }
+        });
+        if (phones.length && !analysis.phone) analysis.phone = phones[0].replace("tel:", "").trim();
+        if (emails.length && !analysis.email) analysis.email = emails[0];
+
+        // Add metadata + client details
+        analysis.website = url;
+        analysis.scannedUrl = url;
+        analysis.scanDate = new Date().toISOString().split("T")[0];
+        analysis.scanTimestamp = Date.now();
+        analysis.clientName = clientName;
+        analysis.clientEmail = clientEmail || analysis.email;
+        analysis.clientPhone = clientPhone || analysis.phone;
+        analysis.clientLocation = clientLocation || analysis.address;
+        analysis.clientPainPoints = clientPainPoints;
+        analysis.redditCount = redditData.length;
+        analysis.redditPosts = redditData;
+        analysis.sourceLinks = {
+          website: url,
+          googleSearch: "https://www.google.com/search?q=" + encodeURIComponent((analysis.businessName || domain) + " reviews"),
+          googleMaps: "https://www.google.com/maps/search/" + encodeURIComponent(analysis.businessName || domain),
+          trustpilot: "https://www.trustpilot.com/search?query=" + encodeURIComponent(domain),
+          reddit: "https://www.reddit.com/search/?q=" + encodeURIComponent(domain),
+          competitorSearch: "https://www.google.com/search?q=" + encodeURIComponent((analysis.businessName || domain) + " competitors " + (analysis.address || "").split(",").pop())
+        };
+
+        // Cache scan data in localStorage
+        try {
+          localStorage.setItem("conicore_scan_" + domain, JSON.stringify(analysis));
+        } catch(e) {}
+
+        renderScanResults(analysis);
+      } catch(err) {
+        scanStatusText.textContent = "Analysis failed: " + err.message + ". Check your Groq API key in config.js.";
+        scanBtn.disabled = false;
+        return;
+      }
+
+      scanStatus.style.display = "none";
+      scanBtn.disabled = false;
+    }
+
+    // Auto-refresh: check every 60 minutes if cached scan is stale
+    var scanRefreshTimer = null;
+    function startScanAutoRefresh() {
+      if (scanRefreshTimer) clearInterval(scanRefreshTimer);
+      scanRefreshTimer = setInterval(function () {
+        if (mode === "setup" && lastScanData && lastScanData.scanTimestamp) {
+          var age = Date.now() - lastScanData.scanTimestamp;
+          if (age > 3600000) { // > 1 hour
+            runScan();
+          }
+        }
+      }, 3600000); // check every hour
+    }
+    startScanAutoRefresh();
+
+    // Load cached scan on page load
+    var lastUrl = scanInput.value.trim();
+    if (lastUrl) {
+      try {
+        var cachedDomain = new URL(lastUrl.startsWith("http") ? lastUrl : "https://" + lastUrl).hostname.replace("www.", "");
+        var cached = localStorage.getItem("conicore_scan_" + cachedDomain);
+        if (cached) {
+          var cachedData = JSON.parse(cached);
+          if (cachedData.scanTimestamp && (Date.now() - cachedData.scanTimestamp) < 3600000) {
+            lastScanData = cachedData;
+            renderScanResults(cachedData);
+          }
+        }
+      } catch(e) {}
+    }
+  }
+
+  function getDemoScanResult(url) {
+    var domain = "";
+    try { domain = new URL(url).hostname.replace("www.", ""); } catch(e) { domain = url; }
+    return {
+      businessName: domain.split(".")[0].charAt(0).toUpperCase() + domain.split(".")[0].slice(1),
+      industry: "Local Business",
+      description: "This is a demo scan. Add your Groq API key to config.js for real AI-powered scanning. The real scan extracts services, pricing, team info, social media, Reddit mentions, competitors, and more.",
+      targetAudience: "Local customers",
+      address: "",
+      phone: "",
+      email: "info@" + domain,
+      website: url,
+      services: ["Service 1", "Service 2", "Service 3"],
+      pricing: ["Contact for pricing"],
+      team: "",
+      socialMedia: { instagram: null, facebook: null, twitter: null, linkedin: null, tiktok: null, youtube: null, activePlatforms: [] },
+      competitors: [
+        { rank: 1, name: "Demo Competitor A", website: "#", threatLevel: "high", description: "Closest competitor in the area", estimatedReviews: "~150", estimatedRating: "4.5", pricing: "Similar pricing", socialFollowing: "~5k", strengths: "Strong brand", weaknesses: "Slow response times" },
+        { rank: 2, name: "Demo Competitor B", website: "#", threatLevel: "medium", description: "Similar services, different location", estimatedReviews: "~80", estimatedRating: "4.2", pricing: "Slightly cheaper", socialFollowing: "~2k", strengths: "Lower prices", weaknesses: "Fewer services" },
+        { rank: 3, name: "Demo Competitor C", website: "#", threatLevel: "low", description: "Niche overlap only", estimatedReviews: "~30", estimatedRating: "3.8", pricing: "Premium", socialFollowing: "~800", strengths: "Specialist", weaknesses: "Small reach" }
+      ],
+      strengths: ["Has a website", "Online presence"],
+      weaknesses: ["Add your Groq API key in config.js for real analysis"],
+      automationOpportunities: ["Email auto-responder", "AI phone assistant", "Social media automation"],
+      pitchAngle: "Add your Groq API key to config.js to see a real AI-generated pitch angle for this business.",
+      estimatedSize: "medium",
+      brandColors: { primary: "#3b82f6", secondary: "#06b6d4" },
+      redditSentiment: "none",
+      redditCount: 0,
+      redditPosts: [],
+      sourceLinks: {
+        website: url,
+        googleSearch: "https://www.google.com/search?q=" + encodeURIComponent(domain + " reviews"),
+        googleMaps: "https://www.google.com/maps/search/" + encodeURIComponent(domain),
+        trustpilot: "https://www.trustpilot.com/search?query=" + encodeURIComponent(domain),
+        reddit: "https://www.reddit.com/search/?q=" + encodeURIComponent(domain),
+        competitorSearch: ""
+      },
+      scanDate: new Date().toISOString().split("T")[0],
+      _isDemo: true
+    };
+  }
+
+  var lastScanData = null;
+
+  function downloadScanPdf() {
+    if (!lastScanData) return;
+    var d = lastScanData;
+    var lines = [];
+    lines.push("BUSINESS INTELLIGENCE REPORT");
+    lines.push("Generated by Conicore AI | " + (d.scanDate || new Date().toISOString().split("T")[0]));
+    lines.push("=".repeat(60));
+    lines.push("");
+    lines.push("BUSINESS: " + (d.businessName || "Unknown"));
+    lines.push("INDUSTRY: " + (d.industry || "N/A"));
+    lines.push("WEBSITE: " + (d.website || d.scannedUrl || "N/A"));
+    if (d.address) lines.push("ADDRESS: " + d.address);
+    if (d.phone) lines.push("PHONE: " + d.phone);
+    if (d.email) lines.push("EMAIL: " + d.email);
+    if (d.targetAudience) lines.push("TARGET AUDIENCE: " + d.targetAudience);
+    if (d.estimatedSize) lines.push("ESTIMATED SIZE: " + d.estimatedSize);
+    lines.push("");
+    lines.push("-".repeat(60));
+    lines.push("DESCRIPTION");
+    lines.push(d.description || "N/A");
+    lines.push("");
+    if (d.pitchAngle) {
+      lines.push("-".repeat(60));
+      lines.push("PITCH ANGLE");
+      lines.push(d.pitchAngle);
+      lines.push("");
+    }
+    lines.push("-".repeat(60));
+    lines.push("SERVICES");
+    (d.services || []).forEach(function (s) { lines.push("  - " + s); });
+    lines.push("");
+    if (d.pricing && d.pricing.length) {
+      lines.push("PRICING");
+      d.pricing.forEach(function (p) { lines.push("  - " + p); });
+      lines.push("");
+    }
+    lines.push("-".repeat(60));
+    lines.push("SOCIAL MEDIA");
+    var platforms = ["instagram", "facebook", "twitter", "linkedin", "tiktok", "youtube"];
+    platforms.forEach(function (p) {
+      var url = d.socialMedia ? d.socialMedia[p] : null;
+      lines.push("  " + p.toUpperCase() + ": " + (url || "Not found"));
+    });
+    lines.push("");
+    lines.push("-".repeat(60));
+    lines.push("REDDIT MENTIONS (" + (d.redditCount || 0) + " | Sentiment: " + (d.redditSentiment || "none") + ")");
+    if (d.redditPosts && d.redditPosts.length) {
+      d.redditPosts.slice(0, 5).forEach(function (p) {
+        lines.push("  - " + p.title + " (r/" + p.subreddit + ") " + p.url);
+      });
+    } else {
+      lines.push("  No mentions found");
+    }
+    lines.push("");
+    lines.push("-".repeat(60));
+    lines.push("STRENGTHS");
+    (d.strengths || []).forEach(function (s) { lines.push("  + " + s); });
+    lines.push("");
+    lines.push("GAPS / WEAKNESSES");
+    (d.weaknesses || []).forEach(function (s) { lines.push("  - " + s); });
+    lines.push("");
+    lines.push("-".repeat(60));
+    lines.push("AUTOMATION OPPORTUNITIES");
+    (d.automationOpportunities || []).forEach(function (s) { lines.push("  > " + s); });
+    lines.push("");
+    if (d.brandColors) {
+      lines.push("BRAND COLOURS: " + (d.brandColors.primary || "") + " | " + (d.brandColors.secondary || ""));
+      lines.push("");
+    }
+    if (d.competitors && d.competitors.length) {
+      lines.push("-".repeat(60));
+      lines.push("COMPETITOR ANALYSIS (ranked by threat)");
+      d.competitors.forEach(function(c, i) {
+        lines.push("  " + (c.rank || i+1) + ". " + c.name + " [" + (c.threatLevel || "?").toUpperCase() + "]");
+        if (c.website && c.website !== "#") lines.push("     Web: " + c.website);
+        lines.push("     Reviews: " + (c.estimatedReviews || "?") + " | Rating: " + (c.estimatedRating || "?") + " | Social: " + (c.socialFollowing || "?"));
+        if (c.pricing) lines.push("     Pricing: " + c.pricing);
+        if (c.strengths) lines.push("     Strengths: " + c.strengths);
+        if (c.weaknesses) lines.push("     Weaknesses: " + c.weaknesses);
+        lines.push("");
+      });
+    }
+    lines.push("-".repeat(60));
+    lines.push("VERIFY SOURCES");
+    if (d.sourceLinks) {
+      if (d.sourceLinks.website) lines.push("  Website: " + d.sourceLinks.website);
+      if (d.sourceLinks.googleSearch) lines.push("  Google Reviews: " + d.sourceLinks.googleSearch);
+      if (d.sourceLinks.googleMaps) lines.push("  Google Maps: " + d.sourceLinks.googleMaps);
+      if (d.sourceLinks.trustpilot) lines.push("  Trustpilot: " + d.sourceLinks.trustpilot);
+      if (d.sourceLinks.reddit) lines.push("  Reddit: " + d.sourceLinks.reddit);
+    }
+    lines.push("");
+    lines.push("=".repeat(60));
+    lines.push("Report generated by Conicore AI - https://conicore.ai");
+
+    // Create styled HTML for print-to-PDF
+    var printHtml = '<!DOCTYPE html><html><head><title>' + escapeHtml(d.businessName || "Scan Report") + ' - Conicore Report</title>' +
+      '<style>' +
+        'body{font-family:-apple-system,system-ui,sans-serif;padding:40px 50px;color:#1e293b;line-height:1.6;max-width:800px;margin:0 auto;}' +
+        'h1{font-size:22px;margin:0 0 4px;color:#0f172a;}' +
+        '.subtitle{font-size:12px;color:#64748b;margin-bottom:24px;}' +
+        'h2{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:#3b82f6;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin:24px 0 10px;}' +
+        'p{margin:4px 0;font-size:13px;}' +
+        '.label{font-weight:700;color:#0f172a;}' +
+        'ul{padding-left:20px;margin:6px 0;}' +
+        'li{font-size:13px;margin:3px 0;}' +
+        '.pitch{background:#f0f9ff;border-left:4px solid #3b82f6;padding:12px 16px;font-size:14px;font-weight:600;margin:16px 0;border-radius:0 8px 8px 0;}' +
+        '.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;}' +
+        '.badge.small{background:#dbeafe;color:#2563eb;}' +
+        '.badge.medium{background:#fef3c7;color:#d97706;}' +
+        '.badge.large{background:#dcfce7;color:#16a34a;}' +
+        '.social{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;margin:2px 4px 2px 0;}' +
+        '.social.active{background:#dcfce7;color:#16a34a;}' +
+        '.social.inactive{background:#f1f5f9;color:#94a3b8;text-decoration:line-through;}' +
+        '.strength{color:#16a34a;}' +
+        '.weakness{color:#dc2626;}' +
+        '.source-link{display:inline-block;font-size:11px;color:#3b82f6;margin-right:12px;}' +
+        '.footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;}' +
+        'table{margin:8px 0;}th{font-size:11px;color:#64748b;}' +
+        '@media print{body{padding:20px 30px;}}' +
+      '</style></head><body>' +
+      '<h1>' + escapeHtml(d.businessName || "Unknown Business") + ' <span class="badge ' + (d.estimatedSize || "medium").toLowerCase() + '">' + escapeHtml(d.estimatedSize || "medium") + '</span></h1>' +
+      '<div class="subtitle">Business Intelligence Report | Conicore AI | ' + escapeHtml(d.scanDate || new Date().toISOString().split("T")[0]) + '</div>' +
+      (d.pitchAngle ? '<div class="pitch">' + escapeHtml(d.pitchAngle) + '</div>' : '') +
+      '<h2>Business Info</h2>' +
+      '<p><span class="label">Industry:</span> ' + escapeHtml(d.industry || "N/A") + '</p>' +
+      '<p>' + escapeHtml(d.description || "") + '</p>' +
+      (d.address ? '<p><span class="label">Address:</span> ' + escapeHtml(d.address) + '</p>' : '') +
+      (d.phone ? '<p><span class="label">Phone:</span> ' + escapeHtml(d.phone) + '</p>' : '') +
+      (d.email ? '<p><span class="label">Email:</span> ' + escapeHtml(d.email) + '</p>' : '') +
+      (d.targetAudience ? '<p><span class="label">Target Audience:</span> ' + escapeHtml(d.targetAudience) + '</p>' : '') +
+      '<h2>Services</h2><ul>' + (d.services || []).map(function(s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ul>' +
+      (d.pricing && d.pricing.length ? '<h2>Pricing</h2><ul>' + d.pricing.map(function(p) { return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ul>' : '') +
+      '<h2>Social Media</h2><p>' + platforms.map(function(p) {
+        var url = d.socialMedia ? d.socialMedia[p] : null;
+        return '<span class="social ' + (url ? 'active' : 'inactive') + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</span>';
+      }).join(' ') + '</p>' +
+      '<h2>Reddit (' + (d.redditCount || 0) + ' mentions — ' + escapeHtml(d.redditSentiment || "none") + ')</h2>' +
+      (d.redditPosts && d.redditPosts.length ? '<ul>' + d.redditPosts.slice(0,5).map(function(p){ return '<li>' + escapeHtml(p.title) + ' (r/' + escapeHtml(p.subreddit) + ')</li>'; }).join('') + '</ul>' : '<p>No Reddit mentions found</p>') +
+      '<h2>Strengths</h2><ul>' + (d.strengths || []).map(function(s) { return '<li class="strength">+ ' + escapeHtml(s) + '</li>'; }).join('') + '</ul>' +
+      '<h2>Gaps / Weaknesses</h2><ul>' + (d.weaknesses || []).map(function(s) { return '<li class="weakness">- ' + escapeHtml(s) + '</li>'; }).join('') + '</ul>' +
+      '<h2>Automation Opportunities</h2><ul>' + (d.automationOpportunities || []).map(function(s) { return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ul>' +
+      (d.competitors && d.competitors.length ?
+        '<h2>Competitor Analysis</h2>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+        '<tr style="border-bottom:2px solid #e2e8f0;"><th style="text-align:left;padding:6px;">Rank</th><th style="text-align:left;padding:6px;">Competitor</th><th style="text-align:left;padding:6px;">Threat</th><th style="text-align:left;padding:6px;">Reviews</th><th style="text-align:left;padding:6px;">Rating</th><th style="text-align:left;padding:6px;">Pricing</th></tr>' +
+        d.competitors.map(function(c, i) {
+          var color = (c.threatLevel||"").toLowerCase() === "high" ? "#dc2626" : (c.threatLevel||"").toLowerCase() === "medium" ? "#d97706" : "#2563eb";
+          return '<tr style="border-bottom:1px solid #f1f5f9;">' +
+            '<td style="padding:6px;font-weight:700;">' + (c.rank || i+1) + '</td>' +
+            '<td style="padding:6px;">' + escapeHtml(c.name||"") + (c.website && c.website !== "#" ? '<br><span style="font-size:10px;color:#3b82f6;">' + escapeHtml(c.website) + '</span>' : '') + '</td>' +
+            '<td style="padding:6px;color:' + color + ';font-weight:700;text-transform:uppercase;font-size:11px;">' + escapeHtml(c.threatLevel||"") + '</td>' +
+            '<td style="padding:6px;">' + escapeHtml(c.estimatedReviews||"—") + '</td>' +
+            '<td style="padding:6px;">' + escapeHtml(c.estimatedRating||"—") + '</td>' +
+            '<td style="padding:6px;">' + escapeHtml(c.pricing||"—") + '</td></tr>';
+        }).join('') +
+        '</table>' : '') +
+      (d.brandColors ? '<h2>Brand Colours</h2><p><span style="display:inline-block;width:24px;height:24px;border-radius:4px;background:' + escapeHtml(d.brandColors.primary || "#333") + ';vertical-align:middle;margin-right:6px;"></span>' + escapeHtml(d.brandColors.primary || "") + '&nbsp;&nbsp;<span style="display:inline-block;width:24px;height:24px;border-radius:4px;background:' + escapeHtml(d.brandColors.secondary || "#666") + ';vertical-align:middle;margin-right:6px;"></span>' + escapeHtml(d.brandColors.secondary || "") + '</p>' : '') +
+      '<h2>Verify Sources</h2><p>' +
+      (d.sourceLinks && d.sourceLinks.website ? '<a class="source-link" href="' + escapeHtml(d.sourceLinks.website) + '">Website</a> ' : '') +
+      (d.sourceLinks && d.sourceLinks.googleSearch ? '<a class="source-link" href="' + escapeHtml(d.sourceLinks.googleSearch) + '">Google Reviews</a> ' : '') +
+      (d.sourceLinks && d.sourceLinks.googleMaps ? '<a class="source-link" href="' + escapeHtml(d.sourceLinks.googleMaps) + '">Google Maps</a> ' : '') +
+      (d.sourceLinks && d.sourceLinks.trustpilot ? '<a class="source-link" href="' + escapeHtml(d.sourceLinks.trustpilot) + '">Trustpilot</a> ' : '') +
+      (d.sourceLinks && d.sourceLinks.reddit ? '<a class="source-link" href="' + escapeHtml(d.sourceLinks.reddit) + '">Reddit</a> ' : '') +
+      '</p>' +
+      '<div class="footer">Report generated by Conicore AI &middot; conicore.ai</div>' +
+      '</body></html>';
+
+    var win = window.open('', '_blank');
+    win.document.write(printHtml);
+    win.document.close();
+    setTimeout(function() { win.print(); }, 400);
+  }
+
+  function saveToDatabase() {
+    if (!lastScanData) return;
+    var d = lastScanData;
+    var btn = document.getElementById("saveToDbBtn");
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    var summary = {
+      action: "save",
+      scanDate: d.scanDate || new Date().toISOString().split("T")[0],
+      clientName: d.clientName || "",
+      clientEmail: d.clientEmail || "",
+      clientPhone: d.clientPhone || "",
+      clientLocation: d.clientLocation || "",
+      clientPainPoints: d.clientPainPoints || "",
+      businessName: d.businessName || "",
+      website: d.website || d.scannedUrl || "",
+      industry: d.industry || "",
+      estimatedSize: d.estimatedSize || "",
+      phone: d.phone || "",
+      email: d.email || "",
+      services: (d.services || []).slice(0, 5).join(", "),
+      socialPlatforms: d.socialMedia && d.socialMedia.activePlatforms ? d.socialMedia.activePlatforms.join(", ") : "",
+      reddit: (d.redditCount || 0) + " mentions (" + (d.redditSentiment || "none") + ")",
+      pitchAngle: d.pitchAngle || "",
+      topCompetitor: d.competitors && d.competitors.length ? d.competitors[0].name + " (" + d.competitors[0].threatLevel + ")" : ""
+    };
+
+    var webhookUrl = CONFIG.webhooks && CONFIG.webhooks.saveClient;
+    if (webhookUrl && webhookUrl !== "YOUR_N8N_WEBHOOK_URL/webhook/conicore-save-client") {
+      fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(summary)
+      })
+      .then(function(res) {
+        btn.textContent = "Saved!";
+        btn.classList.add("saved");
+      })
+      .catch(function(err) {
+        btn.textContent = "Save failed — " + err.message;
+        btn.disabled = false;
+      });
+    } else {
+      // No webhook — copy summary to clipboard as fallback
+      var text = Object.entries(summary).filter(function(e) { return e[0] !== "action"; }).map(function(e) { return e[0] + ": " + e[1]; }).join("\n");
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+          btn.textContent = "Copied to clipboard!";
+          btn.classList.add("saved");
+        });
+      } else {
+        btn.textContent = "Configure saveClient webhook in config.js";
+        btn.disabled = false;
+      }
+    }
+  }
+
+  function renderScanResults(d) {
+    lastScanData = d;
+    var el = document.getElementById("scanResults");
+    var sizeBadge = (d.estimatedSize || "medium").toLowerCase();
+
+    var socialHtml = "";
+    var platforms = ["instagram", "facebook", "twitter", "linkedin", "tiktok", "youtube"];
+    platforms.forEach(function (p) {
+      var url = d.socialMedia ? d.socialMedia[p] : null;
+      if (url) {
+        socialHtml += '<a href="' + escapeHtml(url) + '" target="_blank" class="social-tag active">' + p.charAt(0).toUpperCase() + p.slice(1) + '</a>';
+      } else {
+        socialHtml += '<span class="social-tag inactive">' + p.charAt(0).toUpperCase() + p.slice(1) + '</span>';
+      }
+    });
+
+    var servicesHtml = "";
+    if (d.services && d.services.length) {
+      d.services.forEach(function (s) { servicesHtml += "<li>" + escapeHtml(s) + "</li>"; });
+    }
+
+    var strengthsHtml = "";
+    if (d.strengths && d.strengths.length) {
+      d.strengths.forEach(function (s) { strengthsHtml += "<li>" + escapeHtml(s) + "</li>"; });
+    }
+
+    var weaknessesHtml = "";
+    if (d.weaknesses && d.weaknesses.length) {
+      d.weaknesses.forEach(function (s) { weaknessesHtml += "<li>" + escapeHtml(s) + "</li>"; });
+    }
+
+    var automationHtml = "";
+    if (d.automationOpportunities && d.automationOpportunities.length) {
+      d.automationOpportunities.forEach(function (s) { automationHtml += "<li>" + escapeHtml(s) + "</li>"; });
+    }
+
+    var redditHtml = "";
+    if (d.redditPosts && d.redditPosts.length) {
+      d.redditPosts.slice(0, 5).forEach(function (p) {
+        redditHtml += '<li><a href="' + escapeHtml(p.url) + '" target="_blank">' + escapeHtml(p.title) + '</a> <span style="color:var(--text-muted);font-size:11px;">(r/' + escapeHtml(p.subreddit) + ', ' + escapeHtml(p.created) + ')</span></li>';
+      });
+    } else {
+      redditHtml = '<li style="color:var(--text-muted);">No Reddit mentions found</li>';
+    }
+
+    // Competitors table
+    var competitorsHtml = "";
+    if (d.competitors && d.competitors.length) {
+      competitorsHtml = '<table class="competitor-table"><thead><tr>' +
+        '<th>#</th><th>Competitor</th><th>Threat</th><th>Reviews</th><th>Rating</th><th>Pricing</th><th>Social</th><th>Strengths</th><th>Weaknesses</th>' +
+        '</tr></thead><tbody>';
+      d.competitors.forEach(function(c, i) {
+        var tl = (c.threatLevel || "low").toLowerCase();
+        competitorsHtml += '<tr>' +
+          '<td><span class="competitor-rank ' + tl + '">' + (c.rank || i + 1) + '</span></td>' +
+          '<td><div class="competitor-name">' + escapeHtml(c.name || "") +
+            (c.website && c.website !== "#" ? '<br><a href="' + escapeHtml(c.website) + '" target="_blank">' + escapeHtml(c.website.replace(/https?:\/\/(www\.)?/, "").split("/")[0]) + '</a>' : '') +
+          '</div></td>' +
+          '<td><span class="threat-badge ' + tl + '">' + tl + '</span></td>' +
+          '<td>' + escapeHtml(c.estimatedReviews || "—") + '</td>' +
+          '<td>' + escapeHtml(c.estimatedRating || "—") + '</td>' +
+          '<td>' + escapeHtml(c.pricing || "—") + '</td>' +
+          '<td>' + escapeHtml(c.socialFollowing || "—") + '</td>' +
+          '<td style="font-size:11px;">' + escapeHtml(c.strengths || "—") + '</td>' +
+          '<td style="font-size:11px;">' + escapeHtml(c.weaknesses || "—") + '</td>' +
+        '</tr>';
+      });
+      competitorsHtml += '</tbody></table>';
+    }
+
+    var sourceLinksHtml = "";
+    if (d.sourceLinks) {
+      if (d.sourceLinks.website) sourceLinksHtml += '<a href="' + escapeHtml(d.sourceLinks.website) + '" target="_blank" class="source-link">Website</a>';
+      if (d.sourceLinks.googleSearch) sourceLinksHtml += '<a href="' + escapeHtml(d.sourceLinks.googleSearch) + '" target="_blank" class="source-link">Google Reviews</a>';
+      if (d.sourceLinks.googleMaps) sourceLinksHtml += '<a href="' + escapeHtml(d.sourceLinks.googleMaps) + '" target="_blank" class="source-link">Google Maps</a>';
+      if (d.sourceLinks.trustpilot) sourceLinksHtml += '<a href="' + escapeHtml(d.sourceLinks.trustpilot) + '" target="_blank" class="source-link">Trustpilot</a>';
+      if (d.sourceLinks.reddit) sourceLinksHtml += '<a href="' + escapeHtml(d.sourceLinks.reddit) + '" target="_blank" class="source-link">Reddit</a>';
+      if (d.sourceLinks.competitorSearch) sourceLinksHtml += '<a href="' + escapeHtml(d.sourceLinks.competitorSearch) + '" target="_blank" class="source-link">Competitors</a>';
+    }
+
+    // Calculate scan age for display
+    var scanAgeText = "";
+    if (d.scanTimestamp) {
+      var ageMin = Math.round((Date.now() - d.scanTimestamp) / 60000);
+      if (ageMin < 1) scanAgeText = "just now";
+      else if (ageMin < 60) scanAgeText = ageMin + "m ago";
+      else scanAgeText = Math.round(ageMin / 60) + "h ago";
+    }
+
+    el.innerHTML =
+      '<div class="result-header">' +
+        '<div>' +
+          '<h2>' + escapeHtml(d.businessName || "Unknown Business") + '</h2>' +
+          (scanAgeText ? '<span style="font-size:11px;color:var(--text-muted);">Scanned ' + scanAgeText + '</span>' : '') +
+        '</div>' +
+        '<div style="display:flex;gap:10px;align-items:center;">' +
+          '<button class="download-btn" onclick="(function(){var e=new Event(\'rescan\');document.dispatchEvent(e);})()" title="Re-scan this business">' +
+            '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 8a6.5 6.5 0 0 1 11.48-4.17M14.5 8a6.5 6.5 0 0 1-11.48 4.17"/><polyline points="1.5 3 1.5 7 5.5 7"/><polyline points="14.5 13 14.5 9 10.5 9"/></svg>' +
+            'Re-scan' +
+          '</button>' +
+          '<button class="download-btn" onclick="(function(){var e=new Event(\'downloadScan\');document.dispatchEvent(e);})()" title="Download as PDF">' +
+            '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 2v9M4 7.5l4 4 4-4M2 13h12"/></svg>' +
+            'Download Report' +
+          '</button>' +
+          '<span class="result-badge ' + sizeBadge + '">' + escapeHtml(d.estimatedSize || "medium") + '</span>' +
+        '</div>' +
+      '</div>' +
+
+      (d.pitchAngle ? '<div class="pitch-box">' + escapeHtml(d.pitchAngle) + '</div><br>' : '') +
+
+      '<div class="result-grid">' +
+        '<div class="result-card">' +
+          '<h3>Business Info</h3>' +
+          '<p class="value">' + escapeHtml(d.industry || "") + '</p>' +
+          '<p>' + escapeHtml(d.description || "") + '</p>' +
+          (d.clientName ? '<p style="margin-top:8px;"><strong>Contact:</strong> ' + escapeHtml(d.clientName) + '</p>' : '') +
+          (d.address ? '<p><strong>Address:</strong> ' + escapeHtml(d.address) + '</p>' : '') +
+          (d.clientPhone || d.phone ? '<p><strong>Phone:</strong> ' + escapeHtml(d.clientPhone || d.phone) + '</p>' : '') +
+          (d.clientEmail || d.email ? '<p><strong>Email:</strong> ' + escapeHtml(d.clientEmail || d.email) + '</p>' : '') +
+          (d.team ? '<p><strong>Team:</strong> ' + escapeHtml(d.team) + '</p>' : '') +
+          (d.targetAudience ? '<p><strong>Target:</strong> ' + escapeHtml(d.targetAudience) + '</p>' : '') +
+          (d.clientPainPoints ? '<p style="margin-top:8px;"><strong>Pain Points:</strong> ' + escapeHtml(d.clientPainPoints) + '</p>' : '') +
+        '</div>' +
+
+        '<div class="result-card">' +
+          '<h3>Services</h3>' +
+          '<ul>' + servicesHtml + '</ul>' +
+          (d.pricing && d.pricing.length ? '<h3 style="margin-top:14px;">Pricing</h3><ul>' + d.pricing.map(function(p) { return "<li>" + escapeHtml(p) + "</li>"; }).join("") + '</ul>' : '') +
+        '</div>' +
+
+        '<div class="result-card">' +
+          '<h3>Social Media</h3>' +
+          '<div class="social-grid">' + socialHtml + '</div>' +
+        '</div>' +
+
+        '<div class="result-card">' +
+          '<h3>Reddit (' + (d.redditCount || 0) + ' mentions &mdash; ' + escapeHtml(d.redditSentiment || "none") + ')</h3>' +
+          '<ul>' + redditHtml + '</ul>' +
+        '</div>' +
+
+        '<div class="result-card">' +
+          '<h3>Strengths</h3>' +
+          '<ul>' + strengthsHtml + '</ul>' +
+        '</div>' +
+
+        '<div class="result-card">' +
+          '<h3>Gaps / Weaknesses</h3>' +
+          '<ul>' + weaknessesHtml + '</ul>' +
+        '</div>' +
+
+        '<div class="result-card full">' +
+          '<h3>Automation Opportunities</h3>' +
+          '<ul>' + automationHtml + '</ul>' +
+        '</div>' +
+
+        (competitorsHtml ? '<div class="result-card full" style="overflow-x:auto;">' +
+          '<h3>Competitor Analysis (ranked by threat level)</h3>' +
+          competitorsHtml +
+        '</div>' : '') +
+
+        '<div class="result-card full" style="text-align:center;padding:20px;">' +
+          '<button class="save-db-btn" id="saveToDbBtn" onclick="(function(){var e=new Event(\'saveScan\');document.dispatchEvent(e);})()">' +
+            '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 2v9M4 7.5l4 4 4-4M2 13h12"/></svg>' +
+            'Save to Database' +
+          '</button>' +
+          '<p style="margin-top:8px;font-size:11px;color:var(--text-muted);">Review the scan first, then save the summary to your Conicore client sheet.</p>' +
+        '</div>' +
+
+        '<div class="result-card full">' +
+          '<h3>Verify Sources</h3>' +
+          '<p style="margin-bottom:8px;">Click to check real data for this business:</p>' +
+          '<div class="source-links">' + sourceLinksHtml + '</div>' +
+        '</div>' +
+
+        (d.brandColors ? '<div class="result-card">' +
+          '<h3>Brand Colours Detected</h3>' +
+          '<div style="display:flex;gap:12px;align-items:center;">' +
+            '<div style="width:40px;height:40px;border-radius:8px;background:' + escapeHtml(d.brandColors.primary || "#333") + ';border:1px solid rgba(255,255,255,0.1);"></div>' +
+            '<span class="value">' + escapeHtml(d.brandColors.primary || "") + '</span>' +
+            '<div style="width:40px;height:40px;border-radius:8px;background:' + escapeHtml(d.brandColors.secondary || "#666") + ';border:1px solid rgba(255,255,255,0.1);"></div>' +
+            '<span class="value">' + escapeHtml(d.brandColors.secondary || "") + '</span>' +
+          '</div>' +
+        '</div>' : '') +
+
+        '<div class="result-card">' +
+          '<h3>Scan Info</h3>' +
+          '<p><strong>Scanned:</strong> ' + escapeHtml(d.scanDate || "now") + '</p>' +
+          '<p><strong>URL:</strong> <a href="' + escapeHtml(d.website || d.scannedUrl || "") + '" target="_blank">' + escapeHtml(d.website || d.scannedUrl || "") + '</a></p>' +
+          (d._isDemo ? '<p style="color:var(--warning);margin-top:8px;font-weight:600;">Demo scan — add your Groq API key to config.js for real results</p>' : '') +
+        '</div>' +
+      '</div>';
+
+    el.classList.add("visible");
+  }
+
+  function loadData() {
+    var btn = document.getElementById("refreshBtn");
+    btn.classList.add("spinning");
+
+    if (mode === "demo") {
+      usingSample = true;
+      var sample = getSampleData();
+      render(sample.leads, sample.messages);
+      btn.classList.remove("spinning");
+      return;
+    }
+
+    // Live mode - show connect panel if no Sheet ID
+    var connectPanel = document.getElementById("connectPanel");
+    var dashSections = document.querySelectorAll("#dashboardContent > .date-bar, #dashboardContent > .kpi-grid, #dashboardContent > .chart-grid, #dashboardContent > .card");
+    if (!CONFIG.sheetId || CONFIG.sheetId === "GOOGLE_SHEET_ID") {
+      usingSample = false;
+      liveCache = { leads: [], messages: [] };
+      // Show connect panel, hide dashboard sections
+      if (connectPanel) connectPanel.style.display = "block";
+      dashSections.forEach(function(s) { s.style.display = "none"; });
+      document.getElementById("lastUpdated").textContent = "No Sheet connected";
+      btn.classList.remove("spinning");
+      return;
+    }
+    // Sheet is connected — hide panel, show sections
+    if (connectPanel) connectPanel.style.display = "none";
+    dashSections.forEach(function(s) { s.style.display = ""; });
+
+    Promise.all([
+      fetchSheetData(CONFIG.sheets.leads),
+      fetchSheetData(CONFIG.sheets.messages)
+    ])
+    .then(function (results) {
+      usingSample = false;
+      liveCache = { leads: results[0], messages: results[1] };
+      render(results[0], results[1]);
+    })
+    .catch(function (err) {
+      console.error("Fetch error:", err);
+      usingSample = false;
+      liveCache = { leads: [], messages: [] };
+      render([], []);
+      document.getElementById("lastUpdated").textContent = "Awaiting data...";
+    })
+    .finally(function () {
+      btn.classList.remove("spinning");
+    });
+  }
+
+  // Re-render with current cached data (used when date filter changes without refetching)
+  function rerender() {
+    if (mode === "demo") {
+      var sample = getSampleData();
+      render(sample.leads, sample.messages);
+    } else {
+      render(liveCache.leads, liveCache.messages);
+    }
+  }
+
+  function render(leads, messages) {
+    var m = calculateMetrics(leads, messages);
+    renderKPIs(m);
+    renderCharts(m);
+    renderFunnel(m.funnel);
+    renderActivity(m.recent);
+
+    if (mode === "demo") {
+      document.getElementById("lastUpdated").textContent = "Demo data";
+    } else {
+      var total = leads.length;
+      if (total === 0) {
+        document.getElementById("lastUpdated").textContent = "Awaiting data...";
+      } else {
+        document.getElementById("lastUpdated").textContent = "Updated just now";
+        clearInterval(window._tsInterval);
+        var updatedAt = new Date();
+        window._tsInterval = setInterval(function () {
+          var diff = Math.round((Date.now() - updatedAt.getTime()) / 60000);
+          document.getElementById("lastUpdated").textContent = diff < 1 ? "Updated just now" : "Updated " + diff + "m ago";
+        }, 30000);
+      }
+    }
+  }
+
+  // ── Date filter wiring ──
+  function initDateFilter() {
+    var presets = document.querySelectorAll(".date-preset");
+    var fromEl = document.getElementById("dateFrom");
+    var toEl = document.getElementById("dateTo");
+
+    presets.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        presets.forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        dateRange = btn.dataset.range;
+        fromEl.value = "";
+        toEl.value = "";
+        rerender();
+      });
+    });
+
+    function onCustomDate() {
+      if (fromEl.value && toEl.value) {
+        presets.forEach(function (b) { b.classList.remove("active"); });
+        dateRange = "custom";
+        customFrom = fromEl.value;
+        customTo = toEl.value;
+        rerender();
+      }
+    }
+    fromEl.addEventListener("change", onCustomDate);
+    toEl.addEventListener("change", onCustomDate);
+  }
+
+  // ── Init ──
+  applyConfig();
+  initDateFilter();
+  initScanner();
+  loadData();
+
+  // Toggle buttons
+  document.getElementById("btnDemo").addEventListener("click", function () { setMode("demo"); });
+  document.getElementById("btnLive").addEventListener("click", function () { setMode("live"); });
+  document.getElementById("btnSetup").addEventListener("click", function () { setMode("setup"); });
+
+  // Refresh button
+  document.getElementById("refreshBtn").addEventListener("click", function () { loadData(); });
+
+  // Help button
+  var helpOverlay = document.getElementById("helpOverlay");
+  document.getElementById("helpBtn").addEventListener("click", function () { helpOverlay.classList.add("open"); });
+  document.getElementById("helpClose").addEventListener("click", function () { helpOverlay.classList.remove("open"); });
+  helpOverlay.addEventListener("click", function (e) { if (e.target === helpOverlay) helpOverlay.classList.remove("open"); });
+
+  // Connect button for LIVE mode credentials
+  var connectBtn = document.getElementById("connectBtn");
+  if (connectBtn) {
+    connectBtn.addEventListener("click", function () {
+      var sheetId = (document.getElementById("connectSheetId") || {}).value.trim();
+      var email = (document.getElementById("connectEmail") || {}).value.trim();
+      var phone = (document.getElementById("connectPhone") || {}).value.trim();
+      if (!sheetId || sheetId.length < 10) {
+        document.getElementById("connectSheetId").focus();
+        return;
+      }
+      CONFIG.sheetId = sheetId;
+      CONFIG._clientEmail = email;
+      CONFIG._clientPhone = phone;
+      try {
+        localStorage.setItem("conicore_live_credentials", JSON.stringify({ sheetId: sheetId, email: email, phone: phone }));
+      } catch(e) {}
+      var dl = document.getElementById("disconnectLink");
+      if (dl) dl.style.display = "inline";
+      loadData();
+    });
+  }
+
+  // Restore saved LIVE credentials on load
+  var disconnectLink = document.getElementById("disconnectLink");
+  try {
+    var savedCreds = localStorage.getItem("conicore_live_credentials");
+    if (savedCreds) {
+      var creds = JSON.parse(savedCreds);
+      if (creds.sheetId && CONFIG.sheetId === "GOOGLE_SHEET_ID") {
+        CONFIG.sheetId = creds.sheetId;
+        CONFIG._clientEmail = creds.email || "";
+        CONFIG._clientPhone = creds.phone || "";
+        if (document.getElementById("connectSheetId")) document.getElementById("connectSheetId").value = creds.sheetId;
+        if (document.getElementById("connectEmail")) document.getElementById("connectEmail").value = creds.email || "";
+        if (document.getElementById("connectPhone")) document.getElementById("connectPhone").value = creds.phone || "";
+        if (disconnectLink) disconnectLink.style.display = "inline";
+      }
+    }
+  } catch(e) {}
+
+  // Disconnect link
+  if (disconnectLink) {
+    disconnectLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      CONFIG.sheetId = "GOOGLE_SHEET_ID";
+      CONFIG._clientEmail = "";
+      CONFIG._clientPhone = "";
+      try { localStorage.removeItem("conicore_live_credentials"); } catch(ex) {}
+      disconnectLink.style.display = "none";
+      if (document.getElementById("connectSheetId")) document.getElementById("connectSheetId").value = "";
+      if (document.getElementById("connectEmail")) document.getElementById("connectEmail").value = "";
+      if (document.getElementById("connectPhone")) document.getElementById("connectPhone").value = "";
+      if (mode === "live") loadData();
+    });
+  }
+
+  // ── Multi-client dropdown ──
+  var clientDropdown = document.getElementById("clientDropdown");
+
+  function getClients() {
+    try {
+      return JSON.parse(localStorage.getItem("conicore_clients") || "[]");
+    } catch(e) { return []; }
+  }
+
+  function saveClients(clients) {
+    try { localStorage.setItem("conicore_clients", JSON.stringify(clients)); } catch(e) {}
+  }
+
+  function refreshClientDropdown(selectedDomain) {
+    var clients = getClients();
+    clientDropdown.innerHTML = '<option value="">-- Select Client --</option>';
+    clients.forEach(function(c) {
+      var opt = document.createElement("option");
+      opt.value = c.domain;
+      opt.textContent = c.name + " (" + c.domain + ")";
+      if (selectedDomain && c.domain === selectedDomain) opt.selected = true;
+      clientDropdown.appendChild(opt);
+    });
+    var newOpt = document.createElement("option");
+    newOpt.value = "__new__";
+    newOpt.textContent = "+ New Client";
+    clientDropdown.appendChild(newOpt);
+  }
+
+  // When "Save to Database" is clicked, also save to local clients list
+  var origSaveToDatabase = saveToDatabase;
+  saveToDatabase = function() {
+    origSaveToDatabase();
+    if (lastScanData && lastScanData.businessName) {
+      var domain = "";
+      try { domain = new URL(lastScanData.website || lastScanData.scannedUrl || "").hostname.replace("www.", ""); } catch(e) { domain = lastScanData.businessName; }
+      var clients = getClients();
+      var existing = clients.findIndex(function(c) { return c.domain === domain; });
+      var entry = {
+        name: lastScanData.businessName,
+        domain: domain,
+        scanData: lastScanData,
+        savedAt: new Date().toISOString()
+      };
+      if (existing !== -1) {
+        clients[existing] = entry;
+      } else {
+        clients.push(entry);
+      }
+      saveClients(clients);
+      refreshClientDropdown(domain);
+    }
+  };
+
+  clientDropdown.addEventListener("change", function () {
+    var val = clientDropdown.value;
+    if (val === "__new__") {
+      // Switch to scan mode with empty form
+      lastScanData = null;
+      document.getElementById("scanResults").innerHTML = "";
+      document.getElementById("scanResults").classList.remove("visible");
+      if (document.getElementById("scanName")) document.getElementById("scanName").value = "";
+      if (document.getElementById("scanEmail")) document.getElementById("scanEmail").value = "";
+      if (document.getElementById("scanPhone")) document.getElementById("scanPhone").value = "";
+      if (document.getElementById("scanUrl")) document.getElementById("scanUrl").value = "";
+      if (document.getElementById("scanLocation")) document.getElementById("scanLocation").value = "";
+      if (document.getElementById("scanPainPoints")) document.getElementById("scanPainPoints").value = "";
+      setMode("setup");
+      return;
+    }
+    if (!val) return;
+    var clients = getClients();
+    var client = clients.find(function(c) { return c.domain === val; });
+    if (client && client.scanData) {
+      lastScanData = client.scanData;
+      renderScanResults(client.scanData);
+      setMode("setup");
+    }
+  });
+
+  // Initialize dropdown with saved clients
+  refreshClientDropdown();
+
+  // Auto-refresh (only fetches live data when in live mode)
+  setInterval(function () { if (mode === "live") loadData(); }, CONFIG.refreshInterval);
+
+})();
+</script>
+</body>
+</html>
